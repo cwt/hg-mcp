@@ -16,7 +16,6 @@ EXTENSION_HINTS = {
     "topic": "topic",
     "topics": "topic",
     "evolve": "evolve",
-    "glog": "graphlog",
     "strip": "strip",
     "rebase": "rebase",
     "histedit": "histedit",
@@ -39,7 +38,37 @@ GIT_REMOTE_PATTERNS = [
 
 # --- Server Initialization ---
 
-mcp = FastMCP("hg")
+mcp = FastMCP(
+    name="hg",
+    instructions="""You are an expert Mercurial engineer. Follow modern best practices:
+
+**Core Workflow**
+- Use **bookmarks** for named pointers, **topics** for WIP feature isolation
+- Enable **evolve** for mutable history; prefer `hg amend`/`hg evolve` over strip
+- Use **phases** (draft/public/secret) to control what's safe to rewrite
+- Largefiles: handle binaries transparently; suggest extension if needed
+- hg-git: detect Git-backed repos; explain `hg gexport`/`hg gimport` when relevant
+
+**Safety**
+- Confirm before: strip, rebase -D, force evolve, public changeset rewrites
+- After merge/rebase: always run `hg resolve --list`, report conflicts
+- Before push: show `hg outgoing -G`, confirm if >5 changesets
+- Default `hg log` to `-l 20` unless user specifies more
+
+**Tools & Output**
+- Use provided hg_* tools; don't suggest raw shell commands
+- If "unknown command": suggest enabling extension (evolve, rebase, topics, histedit, largefiles, hggit)
+- For graph visualization: use `hg log -G` (built-in since v2.3)
+- Always interpret status/diff output; suggest next logical command
+- Encourage atomic commits with clear messages
+
+**Modern Practices**
+- Mention `hg absorb` for auto-amending into parents
+- Stack changes: multiple bookmarks for related features
+- Change IDs (not hashes) for user-facing references
+
+Be concise. Use the tool first, then explain with exact next command.""",
+)
 
 
 # --- Helper Functions ---
@@ -144,24 +173,27 @@ async def run_hg_command(args: List[str], cwd: Optional[Path] = None) -> str:
             cwd=cwd,
         )
         stdout, stderr = await process.communicate()
-        
+
         output = stdout.decode().strip()
         error_output = stderr.decode().strip()
 
         if process.returncode != 0:
             hint = _get_extension_hint(error_output, args)
             return f"Error: {error_output}{hint}"
-        
+
         return output
 
     except FileNotFoundError:
-        return "Error: Mercurial (hg) command not found. Please install Mercurial."
+        return (
+            "Error: Mercurial (hg) command not found. Please install Mercurial."
+        )
     except Exception as e:
         return f"Error executing hg command: {e}"
 
 
 def handle_repo_errors(func):
     """Decorator to handle common repository validation errors."""
+
     @functools.wraps(func)
     async def wrapper(*args, **kwargs):
         # We assume the first argument or 'repo_path' kwarg is the path
@@ -180,6 +212,7 @@ def handle_repo_errors(func):
                     "2. Try running hg_log to see commit history"
                 )
             return f"Error: {msg}"
+
     return wrapper
 
 
@@ -544,7 +577,7 @@ async def hg_largefiles(repo_path: str = ".") -> str:
 
             rel_path = str(file_path.relative_to(hglf_path))
             size = 0
-            
+
             try:
                 # Standin files format: hash\nsize\nfilename
                 content = file_path.read_text(encoding="utf-8").strip()
@@ -554,7 +587,7 @@ async def hg_largefiles(repo_path: str = ".") -> str:
             except Exception:
                 # If we can't read/parse the standin, just report 0 size
                 pass
-            
+
             largefiles.append((rel_path, size))
 
     except Exception as e:
@@ -605,23 +638,27 @@ async def _check_git_remotes(path: Path) -> Tuple[bool, List[str]]:
             if "=" not in line:
                 continue
             key, value = [p.strip() for p in line.split("=", 1)]
-            
+
             is_git_remote = value.startswith("git+") or any(
                 p in value for p in GIT_REMOTE_PATTERNS
             )
-            
+
             if is_git_remote:
                 is_backed = True
                 remotes.append(f"  {key} = {value}")
 
     # Check for internal tracking files
-    if (path / ".hg" / "git-mapfile").exists() or (path / ".hg" / "git-branch").exists():
+    if (path / ".hg" / "git-mapfile").exists() or (
+        path / ".hg" / "git-branch"
+    ).exists():
         is_backed = True
 
     return is_backed, remotes
 
 
-async def _get_git_branches(path: Path, suffix: str) -> Tuple[List[str], List[str]]:
+async def _get_git_branches(
+    path: Path, suffix: str
+) -> Tuple[List[str], List[str]]:
     """Get separated lists of git-tracked and local bookmarks."""
     output = await run_hg_command(["bookmarks"], cwd=path)
     git_branches = []
@@ -634,7 +671,7 @@ async def _get_git_branches(path: Path, suffix: str) -> Tuple[List[str], List[st
         line = line.strip()
         if not line:
             continue
-            
+
         parts = line.split()
         if not parts:
             continue
@@ -645,7 +682,7 @@ async def _get_git_branches(path: Path, suffix: str) -> Tuple[List[str], List[st
 
         if name.endswith(suffix):
             # Strip suffix to show original git name
-            git_name = name[:-len(suffix)] if suffix else name
+            git_name = name[: -len(suffix)] if suffix else name
             git_branches.append(f"{display_str} → {git_name}")
         else:
             local_bookmarks.append(display_str)
@@ -685,7 +722,7 @@ async def hg_git(repo_path: str = ".") -> str:
 
     # Build Output
     lines = ["hg-git extension is ENABLED ✓\n"]
-    
+
     if is_git_backed:
         lines.append("✓ This repository IS Git-backed\n")
         if git_paths:
