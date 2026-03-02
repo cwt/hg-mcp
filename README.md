@@ -1,5 +1,7 @@
 # HG MCP Server
 
+[![PyPI Version](https://img.shields.io/pypi/v/hg-mcp.svg)](https://pypi.org/project/hg-mcp/)
+
 A Model Context Protocol (MCP) server for Mercurial repository interaction, written in Python 3.10+ with AsyncIO.
 
 ## Features
