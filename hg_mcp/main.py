@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -23,6 +24,26 @@ EXTENSION_HINTS = {
     "lfiles": "largefiles",
     "lfile": "largefiles",
     "git-cleanup": "hggit",
+}
+
+# Commands that support JSON output format with -T json
+JSON_SUPPORTED_COMMANDS = {
+    "status",
+    "log",
+    "bookmarks",
+    "topics",
+    "config",
+    "resolve",
+    "lfiles",
+    "lfile",
+    "paths",
+    "tags",
+    "heads",
+    "id",
+    "parents",
+    "children",
+    "outgoing",
+    "incoming",
 }
 
 # Patterns to identify Git remotes
@@ -159,15 +180,35 @@ def _get_extension_hint(error_text: str, command_args: List[str]) -> str:
     return ""
 
 
-async def run_hg_command(args: List[str], cwd: Optional[Path] = None) -> str:
-    """Run an hg command asynchronously and return its output."""
+async def run_hg_command(
+    args: List[str], cwd: Optional[Path] = None, use_json: bool = True
+) -> str:
+    """Run an hg command asynchronously and return its output.
+
+    Args:
+        args: Command arguments (e.g., ["status", "-T", "json"])
+        cwd: Working directory
+        use_json: If True and command supports it, automatically add -T json flag
+    """
     if not args:
         return "Error: No command provided."
+
+    is_json = False
+    # Automatically add -T json for commands that support it
+    if use_json and args[0] in JSON_SUPPORTED_COMMANDS:
+        is_json = True
+        # Check if -T is already specified
+        if "-T" not in args and "--template" not in args:
+            cmd_args = args + ["-T", "json"]
+        else:
+            cmd_args = args
+    else:
+        cmd_args = args
 
     try:
         process = await asyncio.create_subprocess_exec(
             "hg",
-            *args,
+            *cmd_args,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             cwd=cwd,
@@ -180,6 +221,15 @@ async def run_hg_command(args: List[str], cwd: Optional[Path] = None) -> str:
         if process.returncode != 0:
             hint = _get_extension_hint(error_output, args)
             return f"Error: {error_output}{hint}"
+
+        # Minimize JSON output using Python's built-in json module
+        if is_json and output:
+            try:
+                data = json.loads(output)
+                output = json.dumps(data, separators=(",", ":"))
+            except Exception:
+                # Fallback to original output if parsing fails
+                pass
 
         return output
 
@@ -228,10 +278,7 @@ async def hg_status(repo_path: str = ".") -> str:
     Returns a clear message even when there are no changes.
     """
     path = validate_repo_path(repo_path)
-    result = await run_hg_command(["status"], cwd=path)
-    if not result:
-        return "Working directory is clean - no uncommitted changes."
-    return result
+    return await run_hg_command(["status"], cwd=path)
 
 
 @mcp.tool()
@@ -247,10 +294,7 @@ async def hg_log(repo_path: str = ".", limit: int = 10) -> str:
         return f"Error: limit exceeds maximum allowed value of {MAX_LOG_LIMIT}"
 
     path = validate_repo_path(repo_path)
-    result = await run_hg_command(["log", "--limit", str(limit)], cwd=path)
-    if not result:
-        return "Repository exists but has no commits yet."
-    return result
+    return await run_hg_command(["log", "--limit", str(limit)], cwd=path)
 
 
 @mcp.tool()
@@ -261,10 +305,7 @@ async def hg_diff(repo_path: str = ".") -> str:
     Equivalent to 'git diff'. Shows line-by-line changes to tracked files.
     """
     path = validate_repo_path(repo_path)
-    result = await run_hg_command(["diff"], cwd=path)
-    if not result:
-        return "No uncommitted changes."
-    return result
+    return await run_hg_command(["diff"], cwd=path)
 
 
 @mcp.tool()
@@ -391,13 +432,23 @@ async def hg_topic_current(repo_path: str = ".") -> str:
     if output.startswith("Error"):
         return output
 
-    for line in output.splitlines():
-        if line.strip().startswith("*"):
-            # Extract topic name after '*'
-            parts = line.strip().split(None, 1)
-            if len(parts) > 1:
-                return parts[1].strip()
-            return parts[0][1:].strip()
+    # Parse JSON output to find active topic
+    try:
+        topics = json.loads(output)
+        for topic in topics:
+            if isinstance(topic, dict) and topic.get("active"):
+                return topic.get("name", "unknown")
+            # Fallback: check for marker in string format
+            if isinstance(topic, str) and topic.startswith("*"):
+                return topic.lstrip("* ").strip()
+    except (json.JSONDecodeError, TypeError):
+        # Fallback to text parsing if JSON parsing fails
+        for line in output.splitlines():
+            if line.strip().startswith("*"):
+                parts = line.strip().split(None, 1)
+                if len(parts) > 1:
+                    return parts[1].strip()
+                return parts[0][1:].strip()
 
     return "No active topic found."
 
