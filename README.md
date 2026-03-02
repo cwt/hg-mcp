@@ -57,7 +57,7 @@ A Model Context Protocol (MCP) server for Mercurial repository interaction, writ
 ### Performance & Reliability
 
 - **Async I/O**: Asynchronous command execution for responsive operations
-- **JSON Output Support**: Automatic JSON formatting for supported commands (`status`, `log`, `bookmarks`, `topics`, `config`, `resolve`, `tags`, `heads`, `id`, `parents`, `children`, `outgoing`, `incoming`)
+- **JSON Output Support**: Automatic JSON formatting for supported commands (`status`, `log`, `bookmarks`, `topics`, `config`, `resolve`, `tags`, `heads`, `id`, `parents`, `children`, `outgoing`, `incoming`, `paths`)
 - **Optional Performance Boost**: Support for uvloop (Unix/macOS) and winloop (Windows) for enhanced performance
 - **Smart Error Handling**: Helpful error messages with hints for missing extensions
 - **Path Validation**: Automatic repository detection even when working in subdirectories
@@ -113,8 +113,9 @@ This starts the MCP server that can be used with MCP clients like Claude for Des
 
 ### Remote Sync
 
-- `hg_push`: Push changes to remote (like `git push`)
+- `hg_push`: Push changes to remote (like `git push`). Shows available remotes if destination doesn't exist
 - `hg_pull`: Pull changes from remote (like `git fetch`)
+- `hg_paths`: List configured paths/remotes with JSON output
 
 ### History Rewriting (Extensions Required)
 

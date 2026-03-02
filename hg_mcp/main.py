@@ -482,13 +482,22 @@ async def hg_branch(name: Optional[str] = None, repo_path: str = ".") -> str:
 async def hg_push(destination: str = "", repo_path: str = ".") -> str:
     """Push changes to a remote repository.
 
-    Equivalent to 'git push'.
+    Equivalent to 'git push'. Use hg_paths to see available remotes.
+    Note: Mercurial typically uses 'default' instead of Git's 'origin'.
     """
     path = validate_repo_path(repo_path)
     args = ["push"]
     if destination:
         args.append(destination)
-    return await run_hg_command(args, cwd=path)
+    result = await run_hg_command(args, cwd=path)
+
+    # Add helpful hint if destination doesn't exist
+    if result.startswith("Error:") and "does not exist" in result:
+        paths_output = await run_hg_command(["paths"], cwd=path)
+        if not paths_output.startswith("Error:") and paths_output:
+            result += f"\n\nAvailable remotes:\n{paths_output}"
+
+    return result
 
 
 @mcp.tool()
@@ -503,6 +512,14 @@ async def hg_pull(source: str = "", repo_path: str = ".") -> str:
     if source:
         args.append(source)
     return await run_hg_command(args, cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_paths(repo_path: str = ".") -> str:
+    """List configured paths/remotes with JSON output."""
+    path = validate_repo_path(repo_path)
+    return await run_hg_command(["paths"], cwd=path)
 
 
 @mcp.tool()
