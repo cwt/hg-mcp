@@ -142,7 +142,8 @@ This starts the MCP server that can be used with MCP clients like Claude for Des
 - `hg_git`: Check hg-git extension status and Git remote configuration
 - `hg_help`: Get help on Mercurial commands and concepts
 - `hg_paths`: List configured paths/remotes with JSON output
-- `hg_tags`: List tags with JSON output
+- `hg_tags`: List all tags with JSON output
+- `hg_tag`: Create or remove a tag (like `git tag`)
 - `hg_heads`: List heads with JSON output
 - `hg_id`: Show current revision ID with JSON output
 - `hg_parents`: Show parent revisions with JSON output

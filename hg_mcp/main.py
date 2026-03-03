@@ -83,6 +83,16 @@ mcp = FastMCP(
 - Always interpret status/diff output; suggest next logical command
 - Encourage atomic commits with clear messages
 
+**Tags Usage**
+- List all tags: use `hg_tags` to see all tags with revisions
+- Create a tag: use `hg_tag(name="v1.0.0")` for current revision, or `hg_tag(name="v1.0.0", revision="tip")`
+- Remove a tag: use `hg_tag(name="v1.0.0", remove=True)`
+- **Important**:
+  * Creating or removing a tag automatically creates a new commit.
+  * Mercurial stores tags in `.hgtags` file.
+  * This means the tag points to the revision *before* the tag commit, not the latest commit.
+  * Warn users before creating tags.
+
 **Modern Practices**
 - Mention `hg absorb` for auto-amending into parents
 - Stack changes: multiple bookmarks for related features
@@ -479,6 +489,50 @@ async def hg_branch(repo_path: str = ".", name: Optional[str] = None) -> str:
 
 @mcp.tool()
 @handle_repo_errors
+async def hg_tags(repo_path: str = ".") -> str:
+    """List all tags.
+
+    Shows all tags in the repository with their associated revision numbers and changeset IDs.
+    """
+    path = validate_repo_path(repo_path)
+    return await run_hg_command(["tags"], cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_tag(
+    name: str,
+    repo_path: str = ".",
+    revision: str = "",
+    remove: bool = False,
+) -> str:
+    """Create or remove a tag.
+
+    Equivalent to 'hg tag'. Creates a new tag pointing to a specific revision.
+
+    Args:
+        name: The name of the tag to create or remove
+        repo_path: The repository path
+        revision: The revision to tag (defaults to current working directory parent)
+        remove: If True, remove the tag instead of creating it
+    """
+    path = validate_repo_path(repo_path)
+    args = ["tag"]
+
+    if remove:
+        args.append("--remove")
+
+    args.extend(["-m", f"Add tag {name}"])
+    args.append(name)
+
+    if revision:
+        args.extend(["-r", revision])
+
+    return await run_hg_command(args, cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
 async def hg_push(repo_path: str = ".", destination: str = "") -> str:
     """Push changes to a remote repository.
 
@@ -564,7 +618,7 @@ async def hg_rebase(
 @mcp.tool()
 @handle_repo_errors
 async def hg_strip(
-    revision: str, keep: bool = False, repo_path: str = "."
+    revision: str, repo_path: str = ".", keep: bool = False
 ) -> str:
     """Remove a changeset using the strip extension."""
     path = validate_repo_path(repo_path)
@@ -599,7 +653,7 @@ async def hg_evolve(repo_path: str = ".") -> str:
 @mcp.tool()
 @handle_repo_errors
 async def hg_transplant(
-    revisions: List[str], source: str = "", repo_path: str = "."
+    revisions: List[str], repo_path: str = ".", source: str = ""
 ) -> str:
     """Cherry-pick changesets using the transplant extension."""
     path = validate_repo_path(repo_path)
