@@ -360,7 +360,7 @@ async def hg_update(revision: str, repo_path: str = ".") -> str:
 @mcp.tool()
 @handle_repo_errors
 async def hg_revert(
-    files: Optional[List[str]] = None, repo_path: str = "."
+    repo_path: str = ".", files: Optional[List[str]] = None
 ) -> str:
     """Revert uncommitted changes.
 
@@ -377,7 +377,7 @@ async def hg_revert(
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_merge(revision: str = "", repo_path: str = ".") -> str:
+async def hg_merge(repo_path: str = ".", revision: str = "") -> str:
     """Merge another revision into the current working directory.
 
     Equivalent to 'git merge'.
@@ -466,7 +466,7 @@ async def hg_bookmarks(repo_path: str = ".") -> str:
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_branch(name: Optional[str] = None, repo_path: str = ".") -> str:
+async def hg_branch(repo_path: str = ".", name: Optional[str] = None) -> str:
     """Show or set the current branch.
 
     Equivalent to 'git branch'.
@@ -479,7 +479,7 @@ async def hg_branch(name: Optional[str] = None, repo_path: str = ".") -> str:
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_push(destination: str = "", repo_path: str = ".") -> str:
+async def hg_push(repo_path: str = ".", destination: str = "") -> str:
     """Push changes to a remote repository.
 
     Equivalent to 'git push'. Use hg_paths to see available remotes.
@@ -502,7 +502,7 @@ async def hg_push(destination: str = "", repo_path: str = ".") -> str:
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_pull(source: str = "", repo_path: str = ".") -> str:
+async def hg_pull(repo_path: str = ".", source: str = "") -> str:
     """Pull changes from a remote repository.
 
     Equivalent to 'git fetch' + 'git merge'.
@@ -541,11 +541,11 @@ async def hg_extensions(repo_path: str = ".") -> str:
 @mcp.tool()
 @handle_repo_errors
 async def hg_rebase(
+    repo_path: str = ".",
     source: str = "",
     dest: str = "",
     collapse: bool = False,
     keep: bool = False,
-    repo_path: str = ".",
 ) -> str:
     """Rebase changes using the rebase extension."""
     path = validate_repo_path(repo_path)
@@ -578,7 +578,7 @@ async def hg_strip(
 @mcp.tool()
 @handle_repo_errors
 async def hg_histedit(
-    revision: str = "", action: str = "", repo_path: str = "."
+    repo_path: str = ".", revision: str = "", action: str = ""
 ) -> str:
     """Edit history interactively using the histedit extension."""
     path = validate_repo_path(repo_path)
@@ -613,7 +613,7 @@ async def hg_transplant(
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_help(topic: str = "", repo_path: str = ".") -> str:
+async def hg_help(repo_path: str = ".", topic: str = "") -> str:
     """Get help on Mercurial commands and concepts."""
     # Special handling: hg_help can work without a repo, but prefers one.
     try:
