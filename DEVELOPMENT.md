@@ -218,6 +218,26 @@ Examples:
 
 ## Release Process
 
-1. Update version in `pyproject.toml`
-2. Create a tag: `hg tag -m "Add tag vX.Y.Z" vX.Y.Z`
-3. Build and publish to PyPI (if applicable)
+**Important**: When tagging a new version, always update `pyproject.toml` first and commit it before creating the tag. This ensures the tag includes the correct version number.
+
+### Workflow
+
+```bash
+# 1. Update version in pyproject.toml
+# Edit pyproject.toml and change the version field:
+# version = "X.Y.Z"
+
+# 2. Commit the version change FIRST
+hg commit pyproject.toml -m "chore: Bump version to vX.Y.Z"
+
+# 3. Create the tag (it will include the version commit)
+hg tag -m "Release vX.Y.Z" vX.Y.Z
+
+# 4. Build and publish to PyPI (if applicable)
+```
+
+### Why This Order Matters
+
+- The tag should point to a commit that includes the version update in `pyproject.toml`
+- This ensures that checking out a tagged version always has the correct version number in the source
+- Makes it easier to verify which version corresponds to which tag
