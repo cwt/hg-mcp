@@ -326,6 +326,9 @@ async def hg_commit(
     """Commit changes with a message.
 
     Equivalent to 'git commit'. Records changes in the repository with a description.
+
+    **Note:** Mercurial has no staging area; all modified files are committed.
+    To select specific files, pass them in the `files` parameter.
     """
     path = validate_repo_path(repo_path)
     args = ["commit", "-m", message]
@@ -362,6 +365,13 @@ async def hg_update(revision: str, repo_path: str = ".") -> str:
     """Update to a specific revision.
 
     Equivalent to 'git checkout' or 'git switch'.
+
+    **Important:** Mercurial does NOT use 'HEAD' like Git. Use these instead:
+    - `.` (dot) - Current parent revision
+    - `tip` - Most recent changeset in the repository
+    - `default` - Default branch head
+    - Specific revision ID (e.g., "123" or "abc123def")
+    - Bookmark name (e.g., "main", "feature-xyz")
     """
     path = validate_repo_path(repo_path)
     return await run_hg_command(["update", revision], cwd=path)
@@ -391,6 +401,8 @@ async def hg_merge(repo_path: str = ".", revision: str = "") -> str:
     """Merge another revision into the current working directory.
 
     Equivalent to 'git merge'.
+
+    **Note:** Mercurial requires explicit merges; no fast-forward by default.
     """
     path = validate_repo_path(repo_path)
     args = ["merge"]
@@ -468,7 +480,8 @@ async def hg_topic_current(repo_path: str = ".") -> str:
 async def hg_bookmarks(repo_path: str = ".") -> str:
     """List all bookmarks.
 
-    Bookmarks are lightweight pointers to revisions.
+    Bookmarks are lightweight pointers to revisions (like Git branches).
+    Unlike Mercurial branches, bookmarks can be moved and deleted.
     """
     path = validate_repo_path(repo_path)
     return await run_hg_command(["bookmarks"], cwd=path)
@@ -480,6 +493,9 @@ async def hg_branch(repo_path: str = ".", name: Optional[str] = None) -> str:
     """Show or set the current branch.
 
     Equivalent to 'git branch'.
+
+    **Note:** Mercurial branches are permanent (unlike Git's lightweight branches).
+    For lightweight pointers, use bookmarks instead.
     """
     path = validate_repo_path(repo_path)
     if name:
@@ -601,7 +617,13 @@ async def hg_rebase(
     collapse: bool = False,
     keep: bool = False,
 ) -> str:
-    """Rebase changes using the rebase extension."""
+    """Rebase changes using the rebase extension.
+
+    Equivalent to 'git rebase'.
+
+    **Note:** Mercurial rebase rewrites draft changesets only.
+    Use `--collapse` to fold multiple changesets into one.
+    """
     path = validate_repo_path(repo_path)
     args = ["rebase"]
     if source:
@@ -620,7 +642,12 @@ async def hg_rebase(
 async def hg_strip(
     revision: str, repo_path: str = ".", keep: bool = False
 ) -> str:
-    """Remove a changeset using the strip extension."""
+    """Remove a changeset using the strip extension.
+
+    Similar to 'git reset --hard' but removes specific changesets.
+
+    **Warning:** Permanently deletes changesets. Use with caution on public history.
+    """
     path = validate_repo_path(repo_path)
     args = ["strip"]
     if keep:
