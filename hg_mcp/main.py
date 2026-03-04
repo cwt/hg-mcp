@@ -70,6 +70,13 @@ mcp = FastMCP(
 - Largefiles: handle binaries transparently; suggest extension if needed
 - hg-git: detect Git-backed repos; explain `hg gexport`/`hg gimport` when relevant
 
+**hg-git Bookmark Synchronization**
+- **CRITICAL**: When working in a Git-backed repository (detected via `hg_git`), bookmark-to-branch synchronization is essential.
+- Git-backed repos use bookmark suffixes (e.g., `main.git`, `feature.git`) to track Git branches.
+- The suffix is configured via `branch_bookmark_suffix` in Mercurial config (default: `.git`).
+- Use `hg_git` to detect the current suffix setting and verify bookmark mapping.
+- The `hg_commit` tool automatically runs `hg gexport` after committing in Git-backed repos to sync bookmarks to Git branches.
+
 **Safety**
 - Confirm before: strip, rebase -D, force evolve, public changeset rewrites
 - After merge/rebase: always run `hg resolve --list`, report conflicts
@@ -329,12 +336,32 @@ async def hg_commit(
 
     **Note:** Mercurial has no staging area; all modified files are committed.
     To select specific files, pass them in the `files` parameter.
+
+    **hg-git:** After committing in a Git-backed repo, this tool will automatically
+    check if bookmark synchronization is needed and run `hg gexport` if hg-git is enabled.
     """
     path = validate_repo_path(repo_path)
     args = ["commit", "-m", message]
     if files:
         args.extend(files)
-    return await run_hg_command(args, cwd=path)
+
+    result = await run_hg_command(args, cwd=path)
+
+    # If commit succeeded, check if hg-git is enabled and sync bookmarks
+    if not result.startswith("Error:"):
+        # Check if hg-git is enabled
+        if await _is_hggit_enabled(path):
+            # Check if repo is Git-backed
+            is_git_backed, _ = await _check_git_remotes(path)
+            if is_git_backed:
+                # Run hg gexport to sync Mercurial bookmarks to Git branches
+                export_result = await run_hg_command(["gexport"], cwd=path)
+                if not export_result.startswith("Error:"):
+                    result += "\n\n✓ hg-git: Bookmarks exported to Git branches (hg gexport)"
+                else:
+                    result += f"\n\nNote: hg gexport skipped - {export_result}"
+
+    return result
 
 
 @mcp.tool()
