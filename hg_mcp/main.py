@@ -4,10 +4,10 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from mcp.server.fastmcp import FastMCP
-from mcp.types import TextContent
+from mcp.types import TextContent, Annotations
 
 # --- Constants ---
 
@@ -82,7 +82,7 @@ def json_tool(func: Callable) -> Callable:
                 TextContent(
                     type="text",
                     text=result,
-                    annotations={"audience": ["user"], "priority": 1.0},
+                    annotations=Annotations(audience=["user"], priority=1.0),
                 )
             ]
 
@@ -91,11 +91,12 @@ def json_tool(func: Callable) -> Callable:
             TextContent(
                 type="text",
                 text=result,
-                annotations={"audience": ["assistant"], "priority": 0.5},
+                annotations=Annotations(audience=["assistant"], priority=0.5),
             )
         ]
 
     return wrapper
+
 
 # --- Server Initialization ---
 
@@ -223,16 +224,30 @@ def validate_repo_path(repo_path: str) -> Path:
 
 def _get_extension_hint(error_text: str, command_args: List[str]) -> str:
     """Generate a hint if a command failed due to a missing extension."""
-    if "unknown command" not in error_text or not command_args:
+    if not command_args:
         return ""
 
     cmd = command_args[0]
     ext = EXTENSION_HINTS.get(cmd)
+
+    # Check for extension-related errors
+    is_extension_error = (
+        "unknown command" in error_text.lower()
+        or "unknown command" in error_text
+        or f"'{cmd}'" in error_text
+        and "unknown" in error_text.lower()
+    )
+
+    if not is_extension_error:
+        return ""
+
     if ext:
         return (
-            f"\n\nHint: The '{cmd}' command requires the '{ext}' extension. "
-            f"You may need to enable it in your .hgrc file by adding:\n\n"
-            f"[extensions]\n{ext} ="
+            f"\n\nExtension '{ext}' is not enabled.\n\n"
+            f"To enable it, add to your .hgrc file:\n\n"
+            f"   [extensions]\n"
+            f"   {ext} =\n\n"
+            f"   Add this to ~/.hgrc (global) or .hg/hgrc (repository-specific)."
         )
     return ""
 
@@ -299,7 +314,13 @@ async def run_hg_command(
 
 
 def handle_repo_errors(func):
-    """Decorator to handle common repository validation errors."""
+    """Decorator to handle common repository validation errors.
+
+    For functions decorated with @json_tool, returns errors as list[TextContent]
+    with audience=['user'] to ensure errors are visible to users.
+    For other functions, returns errors as plain str.
+    """
+    from mcp.types import Annotations as AnnotationsType
 
     @functools.wraps(func)
     async def wrapper(*args, **kwargs):
@@ -311,14 +332,35 @@ def handle_repo_errors(func):
         except ValueError as e:
             msg = str(e)
             if "Not a Mercurial repository" in msg:
-                # Extract path from error message or args if possible, but keeping it simple
-                return (
+                error_msg = (
                     f"Error: {msg}\n\n"
                     "To verify if this is a Mercurial repository:\n"
                     "1. Check if a .hg directory exists\n"
                     "2. Try running hg_log to see commit history"
                 )
-            return f"Error: {msg}"
+            else:
+                error_msg = f"Error: {msg}"
+
+            # Check if the wrapped function is already decorated with @json_tool
+            # by looking for the wrapper attribute or checking return type annotation
+            import inspect
+
+            hints = inspect.getfullargspec(func).annotations.get("return", None)
+            is_json_tool = hints == list[TextContent] or "json_tool" in str(
+                func
+            )
+
+            if is_json_tool:
+                return [
+                    TextContent(
+                        type="text",
+                        text=error_msg,
+                        annotations=AnnotationsType(
+                            audience=["user"], priority=1.0
+                        ),
+                    )
+                ]
+            return error_msg
 
     return wrapper
 
@@ -336,7 +378,7 @@ async def hg_status(repo_path: str = ".") -> list[TextContent]:
     Returns a clear message even when there are no changes.
     """
     path = validate_repo_path(repo_path)
-    return await run_hg_command(["status"], cwd=path)
+    return await run_hg_command(["status"], cwd=path)  # type: ignore[return-value]
 
 
 @mcp.tool()
@@ -348,12 +390,24 @@ async def hg_log(repo_path: str = ".", limit: int = 10) -> list[TextContent]:
     Equivalent to 'git log'. Displays revisions with changeset ID, author, date, and message.
     """
     if limit < 1:
-        return "Error: limit must be at least 1"
+        return [  # type: ignore[return-value]
+            TextContent(
+                type="text",
+                text="Error: limit must be at least 1",
+                annotations=Annotations(audience=["user"], priority=1.0),
+            )
+        ]
     if limit > MAX_LOG_LIMIT:
-        return f"Error: limit exceeds maximum allowed value of {MAX_LOG_LIMIT}"
+        return [  # type: ignore[return-value]
+            TextContent(
+                type="text",
+                text=f"Error: limit exceeds maximum allowed value of {MAX_LOG_LIMIT}",
+                annotations=Annotations(audience=["user"], priority=1.0),
+            )
+        ]
 
     path = validate_repo_path(repo_path)
-    return await run_hg_command(["log", "--limit", str(limit)], cwd=path)
+    return await run_hg_command(["log", "--limit", str(limit)], cwd=path)  # type: ignore[return-value]
 
 
 @mcp.tool()
@@ -489,7 +543,7 @@ async def hg_resolve(repo_path: str = ".") -> list[TextContent]:
     Equivalent to 'git status' during a merge.
     """
     path = validate_repo_path(repo_path)
-    return await run_hg_command(["resolve", "--list"], cwd=path)
+    return await run_hg_command(["resolve", "--list"], cwd=path)  # type: ignore[return-value]
 
 
 @mcp.tool()
@@ -512,7 +566,7 @@ async def hg_topics(repo_path: str = ".") -> list[TextContent]:
     Requires the 'topic' extension.
     """
     path = validate_repo_path(repo_path)
-    return await run_hg_command(["topics"], cwd=path)
+    return await run_hg_command(["topics"], cwd=path)  # type: ignore[return-value]
 
 
 @mcp.tool()
@@ -556,7 +610,7 @@ async def hg_bookmarks(repo_path: str = ".") -> list[TextContent]:
     Unlike Mercurial branches, bookmarks can be moved and deleted.
     """
     path = validate_repo_path(repo_path)
-    return await run_hg_command(["bookmarks"], cwd=path)
+    return await run_hg_command(["bookmarks"], cwd=path)  # type: ignore[return-value]
 
 
 @mcp.tool()
@@ -584,7 +638,7 @@ async def hg_tags(repo_path: str = ".") -> list[TextContent]:
     Shows all tags in the repository with their associated revision numbers and changeset IDs.
     """
     path = validate_repo_path(repo_path)
-    return await run_hg_command(["tags"], cwd=path)
+    return await run_hg_command(["tags"], cwd=path)  # type: ignore[return-value]
 
 
 @mcp.tool()
@@ -663,7 +717,7 @@ async def hg_pull(repo_path: str = ".", source: str = "") -> str:
 async def hg_paths(repo_path: str = ".") -> list[TextContent]:
     """List configured paths/remotes with JSON output."""
     path = validate_repo_path(repo_path)
-    return await run_hg_command(["paths"], cwd=path)
+    return await run_hg_command(["paths"], cwd=path)  # type: ignore[return-value]
 
 
 @mcp.tool()
@@ -672,7 +726,7 @@ async def hg_paths(repo_path: str = ".") -> list[TextContent]:
 async def hg_config(repo_path: str = ".") -> list[TextContent]:
     """Show Mercurial configuration including enabled extensions."""
     path = validate_repo_path(repo_path)
-    return await run_hg_command(["config"], cwd=path)
+    return await run_hg_command(["config"], cwd=path)  # type: ignore[return-value]
 
 
 @mcp.tool()
