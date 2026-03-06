@@ -4,9 +4,10 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import TextContent
 
 # --- Constants ---
 
@@ -56,6 +57,45 @@ GIT_REMOTE_PATTERNS = [
     "ssh://git@",
     "https://github.com",
 ]
+
+
+# --- Decorators for Tool Output ---
+
+
+def json_tool(func: Callable) -> Callable:
+    """Decorator for tools that return JSON output.
+
+    Wraps the returned JSON string in TextContent with audience: ["assistant"]
+    annotation to indicate this content is intended for AI agents (minified,
+    machine-readable) rather than human users.
+
+    The decorated function should return a string (JSON output).
+    """
+
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs) -> list[TextContent]:
+        result = await func(*args, **kwargs)
+
+        # If result is an error, return as plain text in TextContent (users should see errors)
+        if result.startswith("Error:"):
+            return [
+                TextContent(
+                    type="text",
+                    text=result,
+                    annotations={"audience": ["user"], "priority": 1.0},
+                )
+            ]
+
+        # Wrap JSON output in TextContent with assistant-only annotation
+        return [
+            TextContent(
+                type="text",
+                text=result,
+                annotations={"audience": ["assistant"], "priority": 0.5},
+            )
+        ]
+
+    return wrapper
 
 # --- Server Initialization ---
 
@@ -288,7 +328,8 @@ def handle_repo_errors(func):
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_status(repo_path: str = ".") -> str:
+@json_tool
+async def hg_status(repo_path: str = ".") -> list[TextContent]:
     """Show the status of files in the working directory.
 
     Equivalent to 'git status'. Shows modified, added, removed files.
@@ -300,7 +341,8 @@ async def hg_status(repo_path: str = ".") -> str:
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_log(repo_path: str = ".", limit: int = 10) -> str:
+@json_tool
+async def hg_log(repo_path: str = ".", limit: int = 10) -> list[TextContent]:
     """Show commit history.
 
     Equivalent to 'git log'. Displays revisions with changeset ID, author, date, and message.
@@ -440,7 +482,8 @@ async def hg_merge(repo_path: str = ".", revision: str = "") -> str:
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_resolve(repo_path: str = ".") -> str:
+@json_tool
+async def hg_resolve(repo_path: str = ".") -> list[TextContent]:
     """List and manage merge conflicts.
 
     Equivalent to 'git status' during a merge.
@@ -462,7 +505,8 @@ async def hg_topic(name: str, repo_path: str = ".") -> str:
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_topics(repo_path: str = ".") -> str:
+@json_tool
+async def hg_topics(repo_path: str = ".") -> list[TextContent]:
     """List all topics.
 
     Requires the 'topic' extension.
@@ -504,7 +548,8 @@ async def hg_topic_current(repo_path: str = ".") -> str:
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_bookmarks(repo_path: str = ".") -> str:
+@json_tool
+async def hg_bookmarks(repo_path: str = ".") -> list[TextContent]:
     """List all bookmarks.
 
     Bookmarks are lightweight pointers to revisions (like Git branches).
@@ -532,7 +577,8 @@ async def hg_branch(repo_path: str = ".", name: Optional[str] = None) -> str:
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_tags(repo_path: str = ".") -> str:
+@json_tool
+async def hg_tags(repo_path: str = ".") -> list[TextContent]:
     """List all tags.
 
     Shows all tags in the repository with their associated revision numbers and changeset IDs.
@@ -613,7 +659,8 @@ async def hg_pull(repo_path: str = ".", source: str = "") -> str:
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_paths(repo_path: str = ".") -> str:
+@json_tool
+async def hg_paths(repo_path: str = ".") -> list[TextContent]:
     """List configured paths/remotes with JSON output."""
     path = validate_repo_path(repo_path)
     return await run_hg_command(["paths"], cwd=path)
@@ -621,7 +668,8 @@ async def hg_paths(repo_path: str = ".") -> str:
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_config(repo_path: str = ".") -> str:
+@json_tool
+async def hg_config(repo_path: str = ".") -> list[TextContent]:
     """Show Mercurial configuration including enabled extensions."""
     path = validate_repo_path(repo_path)
     return await run_hg_command(["config"], cwd=path)
