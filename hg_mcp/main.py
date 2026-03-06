@@ -912,18 +912,19 @@ async def _check_git_remotes(path: Path) -> Tuple[bool, List[str]]:
     is_backed = False
 
     if not output.startswith("Error"):
-        for line in output.splitlines():
-            if "=" not in line:
-                continue
-            key, value = [p.strip() for p in line.split("=", 1)]
-
-            is_git_remote = value.startswith("git+") or any(
-                p in value for p in GIT_REMOTE_PATTERNS
-            )
-
-            if is_git_remote:
-                is_backed = True
-                remotes.append(f"  {key} = {value}")
+        try:
+            config_items = json.loads(output)
+            for item in config_items:
+                name = item.get("name", "")
+                value = item.get("value", "")
+                is_git_remote = value.startswith("git+") or any(
+                    p in value for p in GIT_REMOTE_PATTERNS
+                )
+                if is_git_remote:
+                    is_backed = True
+                    remotes.append(f"  {name} = {value}")
+        except (json.JSONDecodeError, TypeError):
+            pass
 
     # Check for internal tracking files
     if (path / ".hg" / "git-mapfile").exists() or (
@@ -935,7 +936,7 @@ async def _check_git_remotes(path: Path) -> Tuple[bool, List[str]]:
 
 
 async def _get_git_branches(
-    path: Path, suffix: str
+    path: Path, suffix: Optional[str]
 ) -> Tuple[List[str], List[str]]:
     """Get separated lists of git-tracked and local bookmarks."""
     output = await run_hg_command(["bookmarks"], cwd=path)
@@ -945,25 +946,27 @@ async def _get_git_branches(
     if output.startswith("Error") or "no bookmarks set" in output.lower():
         return [], []
 
-    for line in output.splitlines():
-        line = line.strip()
-        if not line:
-            continue
+    try:
+        bookmarks = json.loads(output)
+        for bm in bookmarks:
+            name = bm.get("bookmark", "")
+            is_active = bm.get("active", False)
+            display_str = f"  {name}" + (" (active)" if is_active else "")
 
-        parts = line.split()
-        if not parts:
-            continue
-
-        is_active = parts[0] == "*"
-        name = parts[1] if is_active and len(parts) > 1 else parts[0]
-        display_str = f"  {name}" + (" (active)" if is_active else "")
-
-        if name.endswith(suffix):
-            # Strip suffix to show original git name
-            git_name = name[: -len(suffix)] if suffix else name
-            git_branches.append(f"{display_str} → {git_name}")
-        else:
-            local_bookmarks.append(display_str)
+            # If suffix is configured, only match bookmarks ending with suffix
+            # If no suffix, all bookmarks are treated as Git-tracked
+            if suffix is None:
+                # No suffix configured - all bookmarks map directly to Git branches
+                git_branches.append(display_str)
+            elif name.endswith(suffix):
+                # Strip suffix to show original Git branch name
+                git_name = name[: -len(suffix)]
+                git_branches.append(f"{display_str} → {git_name}")
+            else:
+                # Bookmark doesn't match suffix pattern - treat as local
+                local_bookmarks.append(display_str)
+    except (json.JSONDecodeError, TypeError):
+        pass
 
     return git_branches, local_bookmarks
 
@@ -986,14 +989,18 @@ async def hg_git(repo_path: str = ".") -> str:
     # 2. Check Git Backing & Remotes
     is_git_backed, git_paths = await _check_git_remotes(path)
 
-    # 3. Get Git Config
+    # 3. Get Git Config (returns JSON)
     config_out = await run_hg_command(["config", "git"], cwd=path)
-    suffix = ".git"  # Default
+    suffix = None  # No default - hg-git doesn't set a default suffix
     if not config_out.startswith("Error"):
-        for line in config_out.splitlines():
-            if "branch_bookmark_suffix" in line:
-                suffix = line.split("=", 1)[1].strip()
-                break
+        try:
+            config_items = json.loads(config_out)
+            for item in config_items:
+                if item.get("name") == "git.branch_bookmark_suffix":
+                    suffix = item.get("value")
+                    break
+        except (json.JSONDecodeError, TypeError):
+            pass
 
     # 4. Get Bookmarks
     git_branches, local_bookmarks = await _get_git_branches(path, suffix)
@@ -1013,7 +1020,12 @@ async def hg_git(repo_path: str = ".") -> str:
     lines.append("=" * 50)
     lines.append("Git Branch Mapping (branch_bookmark_suffix)")
     lines.append("=" * 50)
-    lines.append(f"\nCurrent suffix: '{suffix}'\n")
+    if suffix is not None:
+        lines.append(f"\nCurrent suffix: '{suffix}'\n")
+    else:
+        lines.append(
+            "\nNo branch_bookmark_suffix configured (bookmarks map directly to Git branches)\n"
+        )
 
     if git_branches:
         lines.append("Git-tracked bookmarks:")
