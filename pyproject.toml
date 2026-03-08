@@ -26,7 +26,7 @@ speed = ["uvloop", "winloop"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
-pytest-asyncio = "^0.23.0"
+pytest-asyncio = "^0.26.0"
 black = "^24.0.0"
 ruff = "^0.6.0"
 mypy = "^1.15.0"
@@ -36,10 +36,11 @@ hg-mcp = "hg_mcp.main:main"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short -W ignore::DeprecationWarning"
 
 [tool.mypy]
 python_version = "3.10"
