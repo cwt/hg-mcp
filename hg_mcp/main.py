@@ -46,7 +46,6 @@ JSON_SUPPORTED_COMMANDS = {
     "paths",
     "resolve",
     "status",
-    "summary",
     "tags",
     "topics",
     "verify",
@@ -1070,8 +1069,7 @@ async def hg_files(repo_path: str = ".") -> list[TextContent]:
 
 @mcp.tool()
 @handle_repo_errors
-@json_tool
-async def hg_summary(repo_path: str = ".") -> list[TextContent]:
+async def hg_summary(repo_path: str = ".") -> str:
     """Summarize working directory state.
 
     Provides a concise summary of the working directory including:
@@ -1081,7 +1079,7 @@ async def hg_summary(repo_path: str = ".") -> list[TextContent]:
     - Repository status
     """
     path = validate_repo_path(repo_path)
-    return await run_hg_command(["summary"], cwd=path)  # type: ignore[return-value]
+    return await run_hg_command(["summary"], cwd=path)
 
 
 @mcp.tool()

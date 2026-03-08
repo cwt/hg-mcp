@@ -308,7 +308,7 @@ default = {origin_path}
         encoding="utf-8",
     )
 
-    # Make initial commit and push
+    # Make initial commit and push with --new (Mercurial 6.0+) or regular push
     test_file = main_path / "README.txt"
     test_file.write_text("Initial commit\n", encoding="utf-8")
 
@@ -324,11 +324,21 @@ default = {origin_path}
         check=True,
         capture_output=True,
     )
-    subprocess.run(
-        ["hg", "push", "--create"],
+
+    # Push to create remote branch (use --new for newer hg, or regular push)
+    result = subprocess.run(
+        ["hg", "push", "--new"],
         cwd=main_path,
-        check=True,
         capture_output=True,
+        text=True,
     )
+    if result.returncode != 0:
+        # Fallback for older hg versions
+        subprocess.run(
+            ["hg", "push"],
+            cwd=main_path,
+            check=True,
+            capture_output=True,
+        )
 
     yield main_path
