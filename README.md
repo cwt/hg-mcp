@@ -57,10 +57,11 @@ A Model Context Protocol (MCP) server for Mercurial repository interaction, writ
 ### Performance & Reliability
 
 - **Async I/O**: Asynchronous command execution for responsive operations
-- **JSON Output Support**: Automatic JSON formatting for supported commands (`status`, `log`, `bookmarks`, `topics`, `config`, `resolve`, `tags`, `heads`, `id`, `parents`, `children`, `outgoing`, `incoming`, `paths`)
+- **JSON Output Support**: Automatic JSON formatting for supported commands (`status`, `log`, `bookmarks`, `topics`, `config`, `resolve`, `tags`, `heads`, `id`, `parents`, `children`, `outgoing`, `incoming`, `paths`, `annotate`, `files`, `verify`, `identify`)
 - **Optional Performance Boost**: Support for uvloop (Unix/macOS) and winloop (Windows) for enhanced performance
 - **Smart Error Handling**: Helpful error messages with hints for missing extensions
 - **Path Validation**: Automatic repository detection even when working in subdirectories
+- **Comprehensive Testing**: Full pytest test suite with isolated repository fixtures
 
 ## Installation
 
@@ -144,10 +145,29 @@ This starts the MCP server that can be used with MCP clients like Claude for Des
 - `hg_paths`: List configured paths/remotes with JSON output
 - `hg_tags`: List all tags with JSON output
 - `hg_tag`: Create or remove a tag (like `git tag`)
-- `hg_heads`: List heads with JSON output
-- `hg_id`: Show current revision ID with JSON output
-- `hg_parents`: Show parent revisions with JSON output
-- `hg_children`: Show child revisions with JSON output
+
+### Repository Inspection (New in v0.5.0)
+
+- `hg_annotate`: Show changeset info by line for each file (like `git blame`)
+- `hg_files`: List all tracked files in current revision
+- `hg_summary`: Summarize working directory state (branch, parent, phases)
+- `hg_verify`: Verify repository integrity
+- `hg_identify`: Get changeset ID and branch info for working directory
+
+### Patch Management (New in v0.5.0)
+
+- `hg_export`: Export changesets as patch files
+- `hg_import`: Import ordered set of patches
+
+### Remote Operations (New in v0.5.0)
+
+- `hg_heads`: List branch heads with JSON output
+- `hg_incoming`: Preview changesets to pull from remote
+- `hg_outgoing`: Preview changesets to push to remote
+
+### History Operations (New in v0.5.0)
+
+- `hg_backout`: Reverse effect of earlier changeset (with `--no-commit` by default)
 
 ## Integration with AI Assistants
 
@@ -258,6 +278,49 @@ After configuration, restart your AI assistant and verify the MCP server is conn
 - Python 3.10+
 - Mercurial installed and available in PATH
 - MCP-compatible client
+
+## Development
+
+### Running Tests
+
+```bash
+# Install development dependencies
+pip install -e ".[dev]"
+
+# Run all tests
+pytest
+
+# Run specific test file
+pytest tests/test_core_tools.py -v
+
+# Run with coverage
+pytest --cov=hg_mcp --cov-report=html
+```
+
+### Test Fixtures
+
+The test suite provides isolated Mercurial repositories with controlled extension configurations:
+
+- `hg_repo`: Clean repo with NO extensions enabled
+- `hg_repo_with_commits`: Repo with 5 sample commits
+- `hg_repo_with_extensions`: Repo with configurable extensions (e.g., rebase, evolve)
+- `hg_repo_with_branches`: Multi-branch setup
+- `hg_repo_with_bookmarks`: Repo with bookmarks at different revisions
+- `hg_repo_with_tags`: Repo with tagged revisions
+- `hg_repo_with_remote`: Repo with remote configured
+
+### Code Quality
+
+```bash
+# Run linting
+./scripts/lint-check-and-fix.sh
+
+# Run type checking
+./scripts/type-check.sh
+
+# Run formatter
+./scripts/code-format.sh
+```
 
 ## Acknowledgments
 
