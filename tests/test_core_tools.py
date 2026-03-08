@@ -96,9 +96,9 @@ class TestHgBackout:
         self, hg_repo_with_commits: Path
     ) -> None:
         """Test backing out a changeset without automatic merge."""
-        # Get the revision to backout (commit 3)
+        # Backout revision 3 without committing (no-commit mode)
         result = await hg_backout("3", str(hg_repo_with_commits))
-        # Backout creates uncommitted changes
+        # Should prepare backout but not commit
         assert "backed out" in result.lower() or "commit" in result.lower()
 
     @pytest.mark.asyncio

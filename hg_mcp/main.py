@@ -898,7 +898,10 @@ async def hg_annotate(
 @mcp.tool()
 @handle_repo_errors
 async def hg_backout(
-    revision: str, repo_path: str = ".", merge: bool = False
+    revision: str,
+    repo_path: str = ".",
+    merge: bool = False,
+    message: str = "",
 ) -> str:
     """Reverse effect of earlier changeset.
 
@@ -906,11 +909,25 @@ async def hg_backout(
 
     **Note:** After backout, you need to commit the changes manually unless
     `merge=True` is specified, which will attempt an automatic merge.
+
+    Args:
+        revision: The revision to backout
+        repo_path: The repository path
+        merge: If True, automatically merge the result (creates commit)
+        message: Commit message (required if merge=True, ignored otherwise)
     """
     path = validate_repo_path(repo_path)
     args = ["backout"]
     if merge:
         args.append("--merge")
+        if message:
+            args.extend(["-m", message])
+        else:
+            # Default message to avoid interactive editor
+            args.extend(["-m", f"Backed out changeset {revision}"])
+    else:
+        # Don't commit, just prepare the backout
+        args.append("--no-commit")
     args.append(revision)
     return await run_hg_command(args, cwd=path)
 
