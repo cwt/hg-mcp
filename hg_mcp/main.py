@@ -3,7 +3,7 @@ import functools
 import json
 import subprocess
 import sys
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -66,23 +66,27 @@ GIT_REMOTE_PATTERNS = [
 # --- Decorators for Tool Output ---
 
 
-def json_tool(func: Callable) -> Callable:
+def json_tool(
+    func: Callable[..., Awaitable[list[TextContent] | str]],
+) -> Callable[..., Awaitable[list[TextContent]]]:
     """Decorator for tools that return JSON output.
 
     Wraps the returned JSON string in TextContent with audience: ["assistant"]
     annotation to indicate this content is intended for AI agents (minified,
     machine-readable) rather than human users.
 
-    The decorated function should return a string (JSON output).
+    The decorated function should return a string (JSON output) or list[TextContent].
     """
 
     @functools.wraps(func)
-    async def wrapper(*args, **kwargs) -> list[TextContent]:
+    async def wrapper(  # type: ignore[no-untyped-def]
+        *args, **kwargs
+    ) -> list[TextContent]:
         result = await func(*args, **kwargs)
 
-        # If result is an error, return as plain text in TextContent
+        # If result is an error (str type), return as plain text in TextContent
         # (users should see errors)
-        if result.startswith("Error:"):
+        if isinstance(result, str) and result.startswith("Error:"):
             return [
                 TextContent(
                     type="text",
@@ -91,7 +95,11 @@ def json_tool(func: Callable) -> Callable:
                 )
             ]
 
-        # Wrap JSON output in TextContent with assistant-only annotation
+        # If result is already list[TextContent], return as-is
+        if isinstance(result, list):
+            return result
+
+        # Wrap JSON output (str) in TextContent with assistant-only annotation
         return [
             TextContent(
                 type="text",
@@ -165,7 +173,7 @@ Be concise. Use the tool first, then explain with exact next command.""",
 # --- Helper Functions ---
 
 
-def setup_event_loop():
+def setup_event_loop() -> None:
     """Set up uvloop (Unix) or winloop (Windows) for better performance if available."""
     if sys.platform == "win32":
         try:
@@ -325,7 +333,9 @@ async def run_hg_command(
         return f"Error executing hg command: {e}"
 
 
-def handle_repo_errors(func):
+def handle_repo_errors(
+    func: Callable[..., Awaitable[str | list[TextContent]]],
+) -> Callable[..., Awaitable[str | list[TextContent]]]:
     """Decorator to handle common repository validation errors.
 
     For functions decorated with @json_tool, returns errors as list[TextContent]
@@ -335,7 +345,9 @@ def handle_repo_errors(func):
     from mcp.types import Annotations as AnnotationsType
 
     @functools.wraps(func)
-    async def wrapper(*args, **kwargs):
+    async def wrapper(  # type: ignore[no-untyped-def]
+        *args, **kwargs
+    ) -> str | list[TextContent]:
         # We assume the first argument or 'repo_path' kwarg is the path
         # But since we invoke validate_repo_path inside the tools,
         # we essentially use this to catch the ValueErrors raised there.
@@ -403,7 +415,7 @@ async def hg_log(repo_path: str = ".", limit: int = 10) -> list[TextContent]:
     date, and message.
     """
     if limit < 1:
-        return [  # type: ignore[return-value]
+        return [
             TextContent(
                 type="text",
                 text="Error: limit must be at least 1",
@@ -411,7 +423,7 @@ async def hg_log(repo_path: str = ".", limit: int = 10) -> list[TextContent]:
             )
         ]
     if limit > MAX_LOG_LIMIT:
-        return [  # type: ignore[return-value]
+        return [
             TextContent(
                 type="text",
                 text=f"Error: limit exceeds maximum allowed value of {MAX_LOG_LIMIT}",
@@ -599,7 +611,7 @@ async def hg_topic_current(repo_path: str = ".") -> str:
         topics = json.loads(output)
         for topic in topics:
             if isinstance(topic, dict) and topic.get("active"):
-                return topic.get("name", "unknown")
+                return str(topic.get("name", "unknown"))
             # Fallback: check for marker in string format
             if isinstance(topic, str) and topic.startswith("*"):
                 return topic.lstrip("* ").strip()
@@ -1137,7 +1149,7 @@ async def hg_help(repo_path: str = ".", topic: str = "") -> str:
     try:
         path = validate_repo_path(repo_path)
     except ValueError:
-        path = None  # type: ignore
+        path = None
 
     if topic:
         return await run_hg_command(["help", topic], cwd=path)
@@ -1349,7 +1361,7 @@ async def hg_git(repo_path: str = ".") -> str:
     return "\n".join(lines)
 
 
-def main():
+def main() -> None:
     setup_event_loop()
     mcp.run(transport="stdio")
 
