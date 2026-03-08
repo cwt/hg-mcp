@@ -3,11 +3,11 @@ import functools
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
 
 from mcp.server.fastmcp import FastMCP
-from mcp.types import TextContent, Annotations
+from mcp.types import Annotations, TextContent
 
 # --- Constants ---
 
@@ -227,7 +227,7 @@ def validate_repo_path(repo_path: str) -> Path:
     )
 
 
-def _get_extension_hint(error_text: str, command_args: List[str]) -> str:
+def _get_extension_hint(error_text: str, command_args: list[str]) -> str:
     """Generate a hint if a command failed due to a missing extension."""
     if not command_args:
         return ""
@@ -258,7 +258,7 @@ def _get_extension_hint(error_text: str, command_args: List[str]) -> str:
 
 
 async def run_hg_command(
-    args: List[str], cwd: Optional[Path] = None, use_json: bool = True
+    args: list[str], cwd: Path | None = None, use_json: bool = True
 ) -> str:
     """Run an hg command asynchronously and return its output.
 
@@ -429,7 +429,7 @@ async def hg_diff(repo_path: str = ".") -> str:
 @mcp.tool()
 @handle_repo_errors
 async def hg_commit(
-    message: str, repo_path: str = ".", files: Optional[List[str]] = None
+    message: str, repo_path: str = ".", files: list[str] | None = None
 ) -> str:
     """Commit changes with a message.
 
@@ -467,7 +467,7 @@ async def hg_commit(
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_add(files: List[str], repo_path: str = ".") -> str:
+async def hg_add(files: list[str], repo_path: str = ".") -> str:
     """Add files to version control.
 
     Equivalent to 'git add'. Schedules new or modified files for commit.
@@ -478,7 +478,7 @@ async def hg_add(files: List[str], repo_path: str = ".") -> str:
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_remove(files: List[str], repo_path: str = ".") -> str:
+async def hg_remove(files: list[str], repo_path: str = ".") -> str:
     """Remove files from version control.
 
     Equivalent to 'git rm'. Schedules files for removal from the repository.
@@ -508,7 +508,7 @@ async def hg_update(revision: str, repo_path: str = ".") -> str:
 @mcp.tool()
 @handle_repo_errors
 async def hg_revert(
-    repo_path: str = ".", files: Optional[List[str]] = None
+    repo_path: str = ".", files: list[str] | None = None
 ) -> str:
     """Revert uncommitted changes.
 
@@ -620,7 +620,7 @@ async def hg_bookmarks(repo_path: str = ".") -> list[TextContent]:
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_branch(repo_path: str = ".", name: Optional[str] = None) -> str:
+async def hg_branch(repo_path: str = ".", name: str | None = None) -> str:
     """Show or set the current branch.
 
     Equivalent to 'git branch'.
@@ -814,7 +814,7 @@ async def hg_evolve(repo_path: str = ".") -> str:
 @mcp.tool()
 @handle_repo_errors
 async def hg_transplant(
-    revisions: List[str], repo_path: str = ".", source: str = ""
+    revisions: list[str], repo_path: str = ".", source: str = ""
 ) -> str:
     """Cherry-pick changesets using the transplant extension."""
     path = validate_repo_path(repo_path)
@@ -832,7 +832,7 @@ async def hg_transplant(
 async def hg_annotate(
     repo_path: str = ".",
     revision: str = "",
-    files: Optional[List[str]] = None,
+    files: list[str] | None = None,
 ) -> list[TextContent]:
     """Show changeset information by line for each file.
 
@@ -872,7 +872,7 @@ async def hg_backout(
 @handle_repo_errors
 async def hg_export(
     repo_path: str = ".",
-    revisions: Optional[List[str]] = None,
+    revisions: list[str] | None = None,
     output: str = "",
 ) -> str:
     """Dump the header and diffs for one or more changesets.
@@ -899,7 +899,7 @@ async def hg_export(
 @handle_repo_errors
 async def hg_import(
     repo_path: str = ".",
-    patches: Optional[List[str]] = None,
+    patches: list[str] | None = None,
     no_commit: bool = False,
 ) -> str:
     """Import an ordered set of patches.
@@ -1139,7 +1139,7 @@ async def _is_hggit_enabled(path: Path) -> bool:
     return "hg-git" in help_out.lower() or "hggit" in help_out.lower()
 
 
-async def _check_git_remotes(path: Path) -> Tuple[bool, List[str]]:
+async def _check_git_remotes(path: Path) -> tuple[bool, list[str]]:
     """Check for git remotes in configuration."""
     output = await run_hg_command(["config", "paths"], cwd=path)
     remotes = []
@@ -1170,8 +1170,8 @@ async def _check_git_remotes(path: Path) -> Tuple[bool, List[str]]:
 
 
 async def _get_git_branches(
-    path: Path, suffix: Optional[str]
-) -> Tuple[List[str], List[str]]:
+    path: Path, suffix: str | None
+) -> tuple[list[str], list[str]]:
     """Get separated lists of git-tracked and local bookmarks."""
     output = await run_hg_command(["bookmarks"], cwd=path)
     git_branches = []
