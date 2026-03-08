@@ -147,9 +147,7 @@ class TestExtensionHints:
     @pytest.mark.asyncio
     async def test_rebase_without_extension(self, hg_repo: Path) -> None:
         """Test that rebase commands show helpful error when extension disabled."""
-        result = await hg_rebase(
-            str(hg_repo), source=".", dest="default"
-        )
+        result = await hg_rebase(str(hg_repo), source=".", dest="default")
         # Should show error with extension hint
         assert "Error" in result or "unknown" in result.lower()
 

@@ -80,7 +80,8 @@ def json_tool(func: Callable) -> Callable:
     async def wrapper(*args, **kwargs) -> list[TextContent]:
         result = await func(*args, **kwargs)
 
-        # If result is an error, return as plain text in TextContent (users should see errors)
+        # If result is an error, return as plain text in TextContent
+        # (users should see errors)
         if result.startswith("Error:"):
             return [
                 TextContent(
@@ -116,11 +117,15 @@ mcp = FastMCP(
 - hg-git: detect Git-backed repos; explain `hg gexport`/`hg gimport` when relevant
 
 **hg-git Bookmark Synchronization**
-- **CRITICAL**: When working in a Git-backed repository (detected via `hg_git`), bookmark-to-branch synchronization is essential.
-- Git-backed repos use bookmark suffixes (e.g., `main.git`, `feature.git`) to track Git branches.
-- The suffix is configured via `branch_bookmark_suffix` in Mercurial config (default: `.git`).
+- **CRITICAL**: When working in a Git-backed repo (via `hg_git`),
+  bookmark-to-branch synchronization is essential.
+- Git-backed repos use bookmark suffixes (e.g., `main.git`, `feature.git`)
+  to track Git branches.
+- The suffix is configured via `branch_bookmark_suffix` in Mercurial config
+  (default: `.git`).
 - Use `hg_git` to detect the current suffix setting and verify bookmark mapping.
-- The `hg_commit` tool automatically runs `hg gexport` after committing in Git-backed repos to sync bookmarks to Git branches.
+- The `hg_commit` tool automatically runs `hg gexport` after committing in
+  Git-backed repos to sync bookmarks to Git branches.
 
 **Safety**
 - Confirm before: strip, rebase -D, force evolve, public changeset rewrites
@@ -130,19 +135,22 @@ mcp = FastMCP(
 
 **Tools & Output**
 - Use provided hg_* tools; don't suggest raw shell commands
-- If "unknown command": suggest enabling extension (evolve, rebase, topics, histedit, largefiles, hggit)
+- If "unknown command": suggest enabling extension (evolve, rebase, topics,
+  histedit, largefiles, hggit)
 - For graph visualization: use `hg log -G` (built-in since v2.3)
 - Always interpret status/diff output; suggest next logical command
 - Encourage atomic commits with clear messages
 
 **Tags Usage**
 - List all tags: use `hg_tags` to see all tags with revisions
-- Create a tag: use `hg_tag(name="v1.0.0")` for current revision, or `hg_tag(name="v1.0.0", revision="tip")`
+- Create a tag: use `hg_tag(name="v1.0.0")` for current revision, or
+  `hg_tag(name="v1.0.0", revision="tip")`
 - Remove a tag: use `hg_tag(name="v1.0.0", remove=True)`
 - **Important**:
   * Creating or removing a tag automatically creates a new commit.
   * Mercurial stores tags in `.hgtags` file.
-  * This means the tag points to the revision *before* the tag commit, not the latest commit.
+  * This means the tag points to the revision *before* the tag commit,
+    not the latest commit.
   * Warn users before creating tags.
 
 **Modern Practices**
@@ -391,7 +399,8 @@ async def hg_status(repo_path: str = ".") -> list[TextContent]:
 async def hg_log(repo_path: str = ".", limit: int = 10) -> list[TextContent]:
     """Show commit history.
 
-    Equivalent to 'git log'. Displays revisions with changeset ID, author, date, and message.
+    Equivalent to 'git log'. Displays revisions with changeset ID, author,
+    date, and message.
     """
     if limit < 1:
         return [  # type: ignore[return-value]
@@ -432,13 +441,15 @@ async def hg_commit(
 ) -> str:
     """Commit changes with a message.
 
-    Equivalent to 'git commit'. Records changes in the repository with a description.
+    Equivalent to 'git commit'. Records changes in the repository with a
+    description.
 
     **Note:** Mercurial has no staging area; all modified files are committed.
     To select specific files, pass them in the `files` parameter.
 
-    **hg-git:** After committing in a Git-backed repo, this tool will automatically
-    check if bookmark synchronization is needed and run `hg gexport` if hg-git is enabled.
+    **hg-git:** After committing in a Git-backed repo, this tool will
+    automatically check if bookmark synchronization is needed and run
+    `hg gexport` if hg-git is enabled.
     """
     path = validate_repo_path(repo_path)
     args = ["commit", "-m", message]
@@ -457,7 +468,7 @@ async def hg_commit(
                 # Run hg gexport to sync Mercurial bookmarks to Git branches
                 export_result = await run_hg_command(["gexport"], cwd=path)
                 if not export_result.startswith("Error:"):
-                    result += "\n\n✓ hg-git: Bookmarks exported to Git branches (hg gexport)"
+                    result += "\n\n✓ hg-git: Bookmarks exported to Git branches"
                 else:
                     result += f"\n\nNote: hg gexport skipped - {export_result}"
 
@@ -639,7 +650,8 @@ async def hg_branch(repo_path: str = ".", name: str | None = None) -> str:
 async def hg_tags(repo_path: str = ".") -> list[TextContent]:
     """List all tags.
 
-    Shows all tags in the repository with their associated revision numbers and changeset IDs.
+    Shows all tags in the repository with their associated revision numbers
+    and changeset IDs.
     """
     path = validate_repo_path(repo_path)
     return await run_hg_command(["tags"], cwd=path)  # type: ignore[return-value]
@@ -1320,7 +1332,8 @@ async def hg_git(repo_path: str = ".") -> str:
         lines.append(f"\nCurrent suffix: '{suffix}'\n")
     else:
         lines.append(
-            "\nNo branch_bookmark_suffix configured (bookmarks map directly to Git branches)\n"
+            "\nNo branch_bookmark_suffix configured "
+            "(bookmarks map directly to Git branches)\n"
         )
 
     if git_branches:
