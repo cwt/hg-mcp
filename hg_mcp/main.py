@@ -793,13 +793,60 @@ async def hg_strip(
 @mcp.tool()
 @handle_repo_errors
 async def hg_histedit(
-    repo_path: str = ".", revision: str = "", action: str = ""
+    repo_path: str = ".",
+    revision: str = "",
+    commands: str = "",
 ) -> str:
-    """Edit history interactively using the histedit extension."""
+    """Edit history using histedit extension (non-interactive mode).
+
+    This command lets you edit a linear series of changesets non-interactively
+    by providing a commands file.
+
+    Commands (one per line):
+    - 'pick' - reorder or keep changeset
+    - 'drop' - omit changeset
+    - 'mess' - reword commit message
+    - 'fold' - combine with preceding changeset
+    - 'roll' - like fold, but discard this commit's description
+    - 'edit' - pause at this changeset for manual edits
+    - 'base' - checkout changeset and apply further changesets from there
+
+    Args:
+        repo_path: The repository path
+        revision: First revision to be edited (ancestor)
+        commands: Commands file path or inline commands
+            (e.g., "pick abc123\\ndrop def456")
+
+    Example:
+        # Fold two commits together:
+        hg_histedit(revision="tip~2", commands="fold abc123\\npick def456")
+    """
     path = validate_repo_path(repo_path)
     args = ["histedit"]
+
     if revision:
-        args.append(revision)
+        args.extend(["-r", revision])
+
+    # Support inline commands by creating a temp file
+    if commands:
+        import tempfile
+
+        # Check if commands is a file path or inline commands
+        starts_with_cmd = commands.strip().startswith(
+            ("pick", "drop", "fold", "roll", "edit", "mess", "base")
+        )
+        if "\n" in commands or starts_with_cmd:
+            # Inline commands - create temp file
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".histedit", delete=False
+            ) as f:
+                f.write(commands)
+                commands_file = f.name
+            args.extend(["--commands", commands_file])
+        else:
+            # File path
+            args.extend(["--commands", commands])
+
     return await run_hg_command(args, cwd=path)
 
 
