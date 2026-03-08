@@ -1,6 +1,13 @@
 """Pytest fixtures for hg-mcp tests.
 
 Provides isolated Mercurial repositories with controlled extension configurations.
+
+Note: DeprecationWarnings about asyncio.get_event_loop_policy are suppressed
+due to pytest-asyncio using APIs deprecated in Python 3.14+. This is an
+upstream issue tracked at:
+https://github.com/pytest-dev/pytest-asyncio/issues/713
+
+The warnings are harmless and will be fixed in a future pytest-asyncio release.
 """
 
 import subprocess

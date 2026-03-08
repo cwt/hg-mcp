@@ -40,6 +40,11 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
+
+# Note: DeprecationWarnings suppressed due to pytest-asyncio using asyncio APIs
+# deprecated in Python 3.14+. This is a known issue upstream:
+# https://github.com/pytest-dev/pytest-asyncio/issues/713
+# The warnings are harmless and will be fixed in a future pytest-asyncio release.
 addopts = "-v --tb=short -W ignore::DeprecationWarning"
 
 [tool.mypy]

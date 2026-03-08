@@ -1,6 +1,7 @@
 """Test to check which extensions are available on the system."""
 
 import subprocess
+
 import pytest
 
 
@@ -11,7 +12,7 @@ def test_list_available_extensions() -> None:
         capture_output=True,
         text=True,
     )
-    
+
     if result.returncode == 0:
         extensions = result.stdout.strip().split("\n")
         print(f"\n\nAvailable extensions ({len(extensions)}):")
