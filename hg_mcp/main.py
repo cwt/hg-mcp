@@ -333,6 +333,43 @@ async def run_hg_command(
         return f"Error executing hg command: {e}"
 
 
+def parse_list_param(
+    param: list[str] | str | None, default: list[str] | None = None
+) -> list[str]:
+    """Parse a parameter that can be a list, a JSON string, or a single string.
+
+    This handles MCP client serialization issues where arrays may be sent
+    as JSON-encoded strings.
+
+    Args:
+        param: The parameter to parse (can be list, string, or None)
+        default: Default value if param is None (defaults to empty list)
+
+    Returns:
+        A list of strings
+    """
+    if param is None:
+        return default if default is not None else []
+    if isinstance(param, list):
+        # Type guard ensures this is list[str]
+        return param
+    if isinstance(param, str):
+        # Could be a JSON array string or single value
+        if param.startswith("["):
+            try:
+                parsed: object = json.loads(param)
+                if isinstance(parsed, list):
+                    return [str(item) for item in parsed]
+                # If JSON doesn't parse to a list, treat as single value
+                return [param]
+            except json.JSONDecodeError:
+                # Not valid JSON, treat as single value
+                return [param]
+        return [param]
+    # This should never happen, but return empty list as fallback
+    return []  # type: ignore[unreachable]
+
+
 def handle_repo_errors(
     func: Callable[..., Awaitable[str | list[TextContent]]],
 ) -> Callable[..., Awaitable[str | list[TextContent]]]:
@@ -449,7 +486,7 @@ async def hg_diff(repo_path: str = ".") -> str:
 @mcp.tool()
 @handle_repo_errors
 async def hg_commit(
-    message: str, repo_path: str = ".", files: list[str] | None = None
+    message: str, repo_path: str = ".", files: list[str] | str | None = None
 ) -> str:
     """Commit changes with a message.
 
@@ -465,8 +502,9 @@ async def hg_commit(
     """
     path = validate_repo_path(repo_path)
     args = ["commit", "-m", message]
-    if files:
-        args.extend(files)
+    files_list = parse_list_param(files)
+    if files_list:
+        args.extend(files_list)
 
     result = await run_hg_command(args, cwd=path)
 
@@ -489,24 +527,26 @@ async def hg_commit(
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_add(files: list[str], repo_path: str = ".") -> str:
+async def hg_add(files: list[str] | str, repo_path: str = ".") -> str:
     """Add files to version control.
 
     Equivalent to 'git add'. Schedules new or modified files for commit.
     """
     path = validate_repo_path(repo_path)
-    return await run_hg_command(["add"] + files, cwd=path)
+    files_list = parse_list_param(files)
+    return await run_hg_command(["add"] + files_list, cwd=path)
 
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_remove(files: list[str], repo_path: str = ".") -> str:
+async def hg_remove(files: list[str] | str, repo_path: str = ".") -> str:
     """Remove files from version control.
 
     Equivalent to 'git rm'. Schedules files for removal from the repository.
     """
     path = validate_repo_path(repo_path)
-    return await run_hg_command(["remove"] + files, cwd=path)
+    files_list = parse_list_param(files)
+    return await run_hg_command(["remove"] + files_list, cwd=path)
 
 
 @mcp.tool()
@@ -530,7 +570,7 @@ async def hg_update(revision: str, repo_path: str = ".") -> str:
 @mcp.tool()
 @handle_repo_errors
 async def hg_revert(
-    repo_path: str = ".", files: list[str] | None = None
+    repo_path: str = ".", files: list[str] | str | None = None
 ) -> str:
     """Revert uncommitted changes.
 
@@ -538,8 +578,9 @@ async def hg_revert(
     """
     path = validate_repo_path(repo_path)
     args = ["revert"]
-    if files:
-        args.extend(files)
+    files_list = parse_list_param(files)
+    if files_list:
+        args.extend(files_list)
     else:
         args.append("--all")
     return await run_hg_command(args, cwd=path)
@@ -884,14 +925,15 @@ async def hg_evolve(repo_path: str = ".") -> str:
 @mcp.tool()
 @handle_repo_errors
 async def hg_transplant(
-    revisions: list[str], repo_path: str = ".", source: str = ""
+    revisions: list[str] | str, repo_path: str = ".", source: str = ""
 ) -> str:
     """Cherry-pick changesets using the transplant extension."""
     path = validate_repo_path(repo_path)
     args = ["transplant"]
     if source:
         args.extend(["--source", source])
-    for rev in revisions:
+    revisions_list = parse_list_param(revisions)
+    for rev in revisions_list:
         args.extend(["-r", rev])
     return await run_hg_command(args, cwd=path)
 
@@ -902,7 +944,7 @@ async def hg_transplant(
 async def hg_annotate(
     repo_path: str = ".",
     revision: str = "",
-    files: list[str] | None = None,
+    files: list[str] | str | None = None,
 ) -> list[TextContent]:
     """Show changeset information by line for each file.
 
@@ -913,8 +955,9 @@ async def hg_annotate(
     args = ["annotate"]
     if revision:
         args.extend(["-r", revision])
-    if files:
-        args.extend(files)
+    files_list = parse_list_param(files)
+    if files_list:
+        args.extend(files_list)
     return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
 
 
@@ -959,7 +1002,7 @@ async def hg_backout(
 @handle_repo_errors
 async def hg_export(
     repo_path: str = ".",
-    revisions: list[str] | None = None,
+    revisions: list[str] | str | None = None,
     output: str = "",
 ) -> str:
     """Dump the header and diffs for one or more changesets.
@@ -976,9 +1019,9 @@ async def hg_export(
     args = ["export"]
     if output:
         args.extend(["-o", output])
-    if revisions:
-        for rev in revisions:
-            args.append(rev)
+    revisions_list = parse_list_param(revisions)
+    for rev in revisions_list:
+        args.append(rev)
     return await run_hg_command(args, cwd=path)
 
 
@@ -986,7 +1029,7 @@ async def hg_export(
 @handle_repo_errors
 async def hg_import(
     repo_path: str = ".",
-    patches: list[str] | None = None,
+    patches: list[str] | str | None = None,
     no_commit: bool = False,
 ) -> str:
     """Import an ordered set of patches.
@@ -1003,8 +1046,9 @@ async def hg_import(
     args = ["import"]
     if no_commit:
         args.append("--no-commit")
-    if patches:
-        args.extend(patches)
+    patches_list = parse_list_param(patches)
+    if patches_list:
+        args.extend(patches_list)
     return await run_hg_command(args, cwd=path)
 
 
