@@ -148,6 +148,8 @@ mcp = FastMCP(
 - For graph visualization: use `hg log -G` (built-in since v2.3)
 - Always interpret status/diff output; suggest next logical command
 - Encourage atomic commits with clear messages
+- **Diff**: Use `hg_diff()` for working directory diffs and
+  `hg_diff(revisions="<spec>")` for revision diffs (e.g., "v1.0.0..tip", "500..510")
 
 **Tags Usage**
 - List all tags: use `hg_tags` to see all tags with revisions
@@ -474,13 +476,25 @@ async def hg_log(repo_path: str = ".", limit: int = 10) -> list[TextContent]:
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_diff(repo_path: str = ".") -> str:
-    """Show changes in the working directory.
+async def hg_diff(repo_path: str = ".", revisions: str = "") -> str:
+    """Show changes in the working directory or between revisions.
 
     Equivalent to 'git diff'. Shows line-by-line changes to tracked files.
+
+    Args:
+        repo_path: The repository path
+        revisions: Revision spec (e.g., 'v1.0.0..tip', 'tip~3 tip', '0..2', '500..510')
+
+    Examples:
+        - hg_diff() -> diff of working directory
+        - hg_diff(revisions="500..510") -> diff from 500 to 510
+        - hg_diff(revisions="v1.0.0..tip") -> diff from tag v1.0.0 to tip
     """
     path = validate_repo_path(repo_path)
-    return await run_hg_command(["diff"], cwd=path)
+    args = ["diff"]
+    if revisions:
+        args.extend(["-r", revisions])
+    return await run_hg_command(args, cwd=path)
 
 
 @mcp.tool()

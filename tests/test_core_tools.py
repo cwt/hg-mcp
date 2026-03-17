@@ -16,6 +16,7 @@ from mcp.types import TextContent
 from hg_mcp.main import (
     hg_annotate,
     hg_backout,
+    hg_diff,
     hg_export,
     hg_files,
     hg_heads,
@@ -443,5 +444,36 @@ class TestHgIdentify:
     ) -> None:
         """Test identifying a specific revision."""
         result = await hg_identify(str(hg_repo_with_commits), revision="2")
+        text = _extract_text(result)
+        assert text
+
+
+class TestHgDiff:
+    """Tests for hg_diff tool."""
+
+    @pytest.mark.asyncio
+    async def test_diff_working_directory(
+        self, hg_repo_with_commits: Path
+    ) -> None:
+        """Test diff of working directory (no revisions specified)."""
+        result = await hg_diff(str(hg_repo_with_commits))
+        text = _extract_text(result)
+        assert isinstance(text, str)
+
+    @pytest.mark.asyncio
+    async def test_diff_with_revision_spec(
+        self, hg_repo_with_commits: Path
+    ) -> None:
+        """Test diff with revision spec (e.g., '0..2')."""
+        result = await hg_diff(str(hg_repo_with_commits), revisions="0..2")
+        text = _extract_text(result)
+        assert text
+
+    @pytest.mark.asyncio
+    async def test_diff_single_revision(
+        self, hg_repo_with_commits: Path
+    ) -> None:
+        """Test diff with single revision."""
+        result = await hg_diff(str(hg_repo_with_commits), revisions="1")
         text = _extract_text(result)
         assert text
