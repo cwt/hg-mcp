@@ -7,8 +7,10 @@ from mcp.types import TextContent
 
 from hg_mcp.decorators import handle_repo_errors, json_tool
 from hg_mcp.helpers import parse_list_param, run_hg_command, validate_repo_path
+from hg_mcp.server import mcp
 
 
+@mcp.tool()
 @json_tool
 @handle_repo_errors
 async def hg_annotate(
@@ -31,6 +33,7 @@ async def hg_annotate(
     return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_backout(
     revision: str,
@@ -67,6 +70,7 @@ async def hg_backout(
     return await run_hg_command(args, cwd=path)
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_evolve(repo_path: str = ".") -> str:
     """Show evolution history using the evolve extension."""
@@ -74,6 +78,7 @@ async def hg_evolve(repo_path: str = ".") -> str:
     return await run_hg_command(["evolve"], cwd=path)
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_export(
     repo_path: str = ".",
@@ -100,6 +105,7 @@ async def hg_export(
     return await run_hg_command(args, cwd=path)
 
 
+@mcp.tool()
 @json_tool
 @handle_repo_errors
 async def hg_heads(
@@ -126,6 +132,7 @@ async def hg_heads(
     return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_histedit(
     repo_path: str = ".",
@@ -197,6 +204,7 @@ async def hg_histedit(
     return result
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_import(
     repo_path: str = ".",
@@ -223,6 +231,7 @@ async def hg_import(
     return await run_hg_command(args, cwd=path)
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_rebase(
     repo_path: str = ".",
@@ -251,6 +260,7 @@ async def hg_rebase(
     return await run_hg_command(args, cwd=path)
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_strip(
     revision: str, repo_path: str = ".", keep: bool = False
@@ -269,6 +279,7 @@ async def hg_strip(
     return await run_hg_command(args, cwd=path)
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_transplant(
     revisions: list[str] | str, repo_path: str = ".", source: str = ""

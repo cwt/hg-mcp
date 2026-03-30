@@ -4,8 +4,10 @@ from mcp.types import TextContent
 
 from hg_mcp.decorators import handle_repo_errors, json_tool
 from hg_mcp.helpers import run_hg_command, validate_repo_path
+from hg_mcp.server import mcp
 
 
+@mcp.tool()
 @json_tool
 @handle_repo_errors
 async def hg_incoming(
@@ -27,6 +29,7 @@ async def hg_incoming(
     return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
 
 
+@mcp.tool()
 @json_tool
 @handle_repo_errors
 async def hg_outgoing(
@@ -48,6 +51,7 @@ async def hg_outgoing(
     return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
 
 
+@mcp.tool()
 @json_tool
 @handle_repo_errors
 async def hg_paths(repo_path: str = ".") -> list[TextContent]:
@@ -56,6 +60,7 @@ async def hg_paths(repo_path: str = ".") -> list[TextContent]:
     return await run_hg_command(["paths"], cwd=path)  # type: ignore[return-value]
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_pull(repo_path: str = ".", source: str = "") -> str:
     """Pull changes from a remote repository.
@@ -69,6 +74,7 @@ async def hg_pull(repo_path: str = ".", source: str = "") -> str:
     return await run_hg_command(args, cwd=path)
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_push(repo_path: str = ".", destination: str = "") -> str:
     """Push changes to a remote repository.

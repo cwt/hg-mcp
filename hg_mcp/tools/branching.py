@@ -6,8 +6,10 @@ from mcp.types import TextContent
 
 from hg_mcp.decorators import handle_repo_errors, json_tool
 from hg_mcp.helpers import run_hg_command, validate_repo_path
+from hg_mcp.server import mcp
 
 
+@mcp.tool()
 @json_tool
 @handle_repo_errors
 async def hg_bookmarks(repo_path: str = ".") -> list[TextContent]:
@@ -20,6 +22,7 @@ async def hg_bookmarks(repo_path: str = ".") -> list[TextContent]:
     return await run_hg_command(["bookmarks"], cwd=path)  # type: ignore[return-value]
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_bookmark_create(
     name: str, repo_path: str = ".", revision: str = ""
@@ -43,6 +46,7 @@ async def hg_bookmark_create(
     return await run_hg_command(args, cwd=path)
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_branch(repo_path: str = ".", name: str | None = None) -> str:
     """Show or set the current branch.
@@ -58,6 +62,7 @@ async def hg_branch(repo_path: str = ".", name: str | None = None) -> str:
     return await run_hg_command(["branch"], cwd=path)
 
 
+@mcp.tool()
 @json_tool
 @handle_repo_errors
 async def hg_tags(repo_path: str = ".") -> list[TextContent]:
@@ -70,6 +75,7 @@ async def hg_tags(repo_path: str = ".") -> list[TextContent]:
     return await run_hg_command(["tags"], cwd=path)  # type: ignore[return-value]
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_tag(
     name: str,
@@ -102,6 +108,7 @@ async def hg_tag(
     return await run_hg_command(args, cwd=path)
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_topic(name: str, repo_path: str = ".") -> str:
     """Create a new topic.
@@ -112,6 +119,7 @@ async def hg_topic(name: str, repo_path: str = ".") -> str:
     return await run_hg_command(["topic", name], cwd=path)
 
 
+@mcp.tool()
 @json_tool
 @handle_repo_errors
 async def hg_topics(repo_path: str = ".") -> list[TextContent]:
@@ -123,6 +131,7 @@ async def hg_topics(repo_path: str = ".") -> list[TextContent]:
     return await run_hg_command(["topics"], cwd=path)  # type: ignore[return-value]
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_topic_current(repo_path: str = ".") -> str:
     """Show the current topic."""

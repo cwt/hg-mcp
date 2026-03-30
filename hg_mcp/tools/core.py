@@ -6,8 +6,10 @@ from hg_mcp.commands import MAX_LOG_LIMIT
 from hg_mcp.decorators import handle_repo_errors, json_tool
 from hg_mcp.helpers import parse_list_param, run_hg_command, validate_repo_path
 from hg_mcp.hggit import _check_git_remotes, _is_hggit_enabled
+from hg_mcp.server import mcp
 
 
+@mcp.tool()
 @json_tool
 @handle_repo_errors
 async def hg_status(repo_path: str = ".") -> list[TextContent]:
@@ -20,6 +22,7 @@ async def hg_status(repo_path: str = ".") -> list[TextContent]:
     return await run_hg_command(["status"], cwd=path)  # type: ignore[return-value]
 
 
+@mcp.tool()
 @json_tool
 @handle_repo_errors
 async def hg_log(repo_path: str = ".", limit: int = 10) -> list[TextContent]:
@@ -49,6 +52,7 @@ async def hg_log(repo_path: str = ".", limit: int = 10) -> list[TextContent]:
     return await run_hg_command(["log", "--limit", str(limit)], cwd=path)  # type: ignore[return-value]
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_diff(repo_path: str = ".", revisions: str = "") -> str:
     """Show changes in the working directory or between revisions.
@@ -71,6 +75,7 @@ async def hg_diff(repo_path: str = ".", revisions: str = "") -> str:
     return await run_hg_command(args, cwd=path)
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_commit(
     message: str, repo_path: str = ".", files: list[str] | str | None = None
@@ -109,6 +114,7 @@ async def hg_commit(
     return result
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_amend(message: str | None = None, repo_path: str = ".") -> str:
     """Amend the current commit.
@@ -150,6 +156,7 @@ async def hg_amend(message: str | None = None, repo_path: str = ".") -> str:
     return result
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_add(files: list[str] | str, repo_path: str = ".") -> str:
     """Add files to version control.
@@ -161,6 +168,7 @@ async def hg_add(files: list[str] | str, repo_path: str = ".") -> str:
     return await run_hg_command(["add"] + files_list, cwd=path)
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_remove(files: list[str] | str, repo_path: str = ".") -> str:
     """Remove files from version control.
@@ -172,6 +180,7 @@ async def hg_remove(files: list[str] | str, repo_path: str = ".") -> str:
     return await run_hg_command(["remove"] + files_list, cwd=path)
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_update(revision: str, repo_path: str = ".") -> str:
     """Update to a specific revision.
@@ -189,6 +198,7 @@ async def hg_update(revision: str, repo_path: str = ".") -> str:
     return await run_hg_command(["update", revision], cwd=path)
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_revert(
     repo_path: str = ".", files: list[str] | str | None = None
@@ -207,6 +217,7 @@ async def hg_revert(
     return await run_hg_command(args, cwd=path)
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_rename(src: str, dst: str, repo_path: str = ".") -> str:
     """Rename/move files.
@@ -222,6 +233,7 @@ async def hg_rename(src: str, dst: str, repo_path: str = ".") -> str:
     return await run_hg_command(["rename", src, dst], cwd=path)
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_cat(file: str, repo_path: str = ".", revision: str = "") -> str:
     """Show file content at a specific revision.

@@ -9,8 +9,10 @@ from hg_mcp.hggit import (
     _get_git_branches,
     _is_hggit_enabled,
 )
+from hg_mcp.server import mcp
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_git(repo_path: str = ".") -> str:
     """Check hg-git extension status and whether this repo is Git-backed."""

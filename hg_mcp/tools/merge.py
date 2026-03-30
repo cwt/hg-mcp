@@ -4,8 +4,10 @@ from mcp.types import TextContent
 
 from hg_mcp.decorators import handle_repo_errors, json_tool
 from hg_mcp.helpers import run_hg_command, validate_repo_path
+from hg_mcp.server import mcp
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_merge(repo_path: str = ".", revision: str = "") -> str:
     """Merge another revision into the current working directory.
@@ -21,6 +23,7 @@ async def hg_merge(repo_path: str = ".", revision: str = "") -> str:
     return await run_hg_command(args, cwd=path)
 
 
+@mcp.tool()
 @json_tool
 @handle_repo_errors
 async def hg_resolve(repo_path: str = ".") -> list[TextContent]:

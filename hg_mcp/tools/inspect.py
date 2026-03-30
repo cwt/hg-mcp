@@ -4,8 +4,10 @@ from mcp.types import TextContent
 
 from hg_mcp.decorators import handle_repo_errors, json_tool
 from hg_mcp.helpers import format_bytes, run_hg_command, validate_repo_path
+from hg_mcp.server import mcp
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_config(repo_path: str = ".") -> list[TextContent]:
     """Show Mercurial configuration including enabled extensions."""
@@ -13,6 +15,7 @@ async def hg_config(repo_path: str = ".") -> list[TextContent]:
     return await run_hg_command(["config"], cwd=path)  # type: ignore[return-value]
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_extensions(repo_path: str = ".") -> str:
     """List enabled Mercurial extensions."""
@@ -20,6 +23,7 @@ async def hg_extensions(repo_path: str = ".") -> str:
     return await run_hg_command(["config", "extensions"], cwd=path)
 
 
+@mcp.tool()
 @json_tool
 @handle_repo_errors
 async def hg_files(repo_path: str = ".") -> list[TextContent]:
@@ -31,6 +35,7 @@ async def hg_files(repo_path: str = ".") -> list[TextContent]:
     return await run_hg_command(["files"], cwd=path)  # type: ignore[return-value]
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_help(repo_path: str = ".", topic: str = "") -> str:
     """Get help on Mercurial commands and concepts."""
@@ -45,6 +50,7 @@ async def hg_help(repo_path: str = ".", topic: str = "") -> str:
     return await run_hg_command(["help"], cwd=path)
 
 
+@mcp.tool()
 @json_tool
 @handle_repo_errors
 async def hg_identify(
@@ -66,6 +72,7 @@ async def hg_identify(
     return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_largefiles(repo_path: str = ".") -> str:
     """Show large files tracked by the largefiles extension."""
@@ -113,6 +120,7 @@ async def hg_largefiles(repo_path: str = ".") -> str:
     return "\n".join(lines)
 
 
+@mcp.tool()
 @handle_repo_errors
 async def hg_summary(repo_path: str = ".") -> str:
     """Summarize working directory state.
@@ -127,6 +135,7 @@ async def hg_summary(repo_path: str = ".") -> str:
     return await run_hg_command(["summary"], cwd=path)
 
 
+@mcp.tool()
 @json_tool
 @handle_repo_errors
 async def hg_verify(repo_path: str = ".") -> list[TextContent]:
