@@ -88,10 +88,13 @@ async def hg_push(repo_path: str = ".", destination: str = "") -> str:
         args.append(destination)
     result = await run_hg_command(args, cwd=path)
 
-    # Add helpful hint if destination doesn't exist
-    if result.startswith("Error:") and "does not exist" in result:
-        paths_output = await run_hg_command(["paths"], cwd=path)
-        if not paths_output.startswith("Error:") and paths_output:
-            result += f"\n\nAvailable remotes:\n{paths_output}"
+    # Add helpful hint if push failed due to unknown destination
+    # Mercurial error messages typically contain "does not exist" or "unknown"
+    if result.startswith("Error:"):
+        error_indicators = ["does not exist", "unknown", "abort:"]
+        if any(indicator in result.lower() for indicator in error_indicators):
+            paths_output = await run_hg_command(["paths"], cwd=path)
+            if not paths_output.startswith("Error:") and paths_output:
+                result += f"\n\nAvailable remotes:\n{paths_output}"
 
     return result

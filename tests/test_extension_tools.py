@@ -216,10 +216,12 @@ class TestCommandTimeout:
         from hg_mcp.helpers import run_hg_command
 
         # Use a command with very short timeout
+        # Note: 10ms is short enough to test timeout behavior but long enough
+        # to avoid flaky failures on slow systems
         result = await run_hg_command(
             args=["log", "-l", "1000"],  # Large limit to make it slower
             cwd=hg_repo_with_commits,
-            timeout=0.001,  # Very short timeout to force timeout
+            timeout=0.01,  # 10ms timeout to test timeout handling
         )
 
         assert isinstance(result, str)

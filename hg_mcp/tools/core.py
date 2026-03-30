@@ -102,14 +102,21 @@ async def hg_commit(
 
     # If commit succeeded, check if hg-git is enabled and sync bookmarks
     if not result.startswith("Error:"):
-        if await _is_hggit_enabled(path):
-            is_git_backed, _ = await _check_git_remotes(path)
-            if is_git_backed:
-                export_result = await run_hg_command(["gexport"], cwd=path)
-                if not export_result.startswith("Error:"):
-                    result += "\n\n✓ hg-git: Bookmarks exported to Git branches"
-                else:
-                    result += f"\n\nNote: hg gexport skipped - {export_result}"
+        try:
+            if await _is_hggit_enabled(path):
+                is_git_backed, _ = await _check_git_remotes(path)
+                if is_git_backed:
+                    export_result = await run_hg_command(["gexport"], cwd=path)
+                    if not export_result.startswith("Error:"):
+                        result += (
+                            "\n\n✓ hg-git: Bookmarks exported to Git branches"
+                        )
+                    else:
+                        result += (
+                            f"\n\nNote: hg gexport skipped - {export_result}"
+                        )
+        except Exception as e:
+            result += f"\n\nNote: hg-git integration check failed: {e}"
 
     return result
 
@@ -144,14 +151,21 @@ async def hg_amend(message: str | None = None, repo_path: str = ".") -> str:
 
     # If amend succeeded, check if hg-git is enabled and sync bookmarks
     if not result.startswith("Error:"):
-        if await _is_hggit_enabled(path):
-            is_git_backed, _ = await _check_git_remotes(path)
-            if is_git_backed:
-                export_result = await run_hg_command(["gexport"], cwd=path)
-                if not export_result.startswith("Error:"):
-                    result += "\n\n✓ hg-git: Bookmarks exported to Git branches"
-                else:
-                    result += f"\n\nNote: hg gexport skipped - {export_result}"
+        try:
+            if await _is_hggit_enabled(path):
+                is_git_backed, _ = await _check_git_remotes(path)
+                if is_git_backed:
+                    export_result = await run_hg_command(["gexport"], cwd=path)
+                    if not export_result.startswith("Error:"):
+                        result += (
+                            "\n\n✓ hg-git: Bookmarks exported to Git branches"
+                        )
+                    else:
+                        result += (
+                            f"\n\nNote: hg gexport skipped - {export_result}"
+                        )
+        except Exception as e:
+            result += f"\n\nNote: hg-git integration check failed: {e}"
 
     return result
 

@@ -42,11 +42,18 @@ async def hg_files(repo_path: str = ".") -> list[TextContent]:
 @mcp.tool()
 @handle_repo_errors
 async def hg_help(repo_path: str = ".", topic: str = "") -> str:
-    """Get help on Mercurial commands and concepts."""
+    """Get help on Mercurial commands and concepts.
+
+    Note: This command can work without a repository when no topic is specified.
+    When a topic is provided, it will attempt to find a repository but fall back
+    to global help if none is found.
+    """
     # Special handling: hg_help can work without a repo, but prefers one.
+    # hg help (without topic) works globally, hg help <topic> may need repo context
     try:
         path = validate_repo_path(repo_path)
     except ValueError:
+        # No repository found - use global help (path=None is valid for hg help)
         path = None
 
     if topic:
