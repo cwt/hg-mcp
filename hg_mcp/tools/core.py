@@ -4,7 +4,12 @@ from mcp.types import Annotations, TextContent
 
 from hg_mcp.commands import MAX_LOG_LIMIT
 from hg_mcp.decorators import handle_repo_errors, json_tool
-from hg_mcp.helpers import parse_list_param, run_hg_command, validate_repo_path
+from hg_mcp.helpers import (
+    parse_list_param,
+    run_hg_command,
+    sanitize_input,
+    validate_repo_path,
+)
 from hg_mcp.hggit import _check_git_remotes, _is_hggit_enabled
 from hg_mcp.server import mcp
 
@@ -93,10 +98,20 @@ async def hg_commit(
     `hg gexport` if hg-git is enabled.
     """
     path = validate_repo_path(repo_path)
-    args = ["commit", "-m", message]
+    # Sanitize commit message to prevent potential command injection
+    try:
+        safe_message = sanitize_input(message, max_length=10000)
+    except ValueError as e:
+        return f"Error: Invalid commit message - {e}"
+    args = ["commit", "-m", safe_message]
     files_list = parse_list_param(files)
     if files_list:
-        args.extend(files_list)
+        # Sanitize file paths
+        try:
+            safe_files = [sanitize_input(f, max_length=500) for f in files_list]
+        except ValueError as e:
+            return f"Error: Invalid file path - {e}"
+        args.extend(safe_files)
 
     result = await run_hg_command(args, cwd=path)
 
@@ -143,7 +158,12 @@ async def hg_amend(message: str | None = None, repo_path: str = ".") -> str:
     args = ["commit", "--amend"]
 
     if message:
-        args.extend(["-m", message])
+        # Sanitize commit message
+        try:
+            safe_message = sanitize_input(message, max_length=10000)
+        except ValueError as e:
+            return f"Error: Invalid commit message - {e}"
+        args.extend(["-m", safe_message])
     else:
         args.append("--no-edit")
 
@@ -176,10 +196,21 @@ async def hg_add(files: list[str] | str, repo_path: str = ".") -> str:
     """Add files to version control.
 
     Equivalent to 'git add'. Schedules new or modified files for commit.
+
+    Args:
+        files: One or more file paths to add
+        repo_path: The repository path
     """
     path = validate_repo_path(repo_path)
     files_list = parse_list_param(files)
-    return await run_hg_command(["add"] + files_list, cwd=path)
+    if not files_list:
+        return "Error: At least one file must be specified"
+    # Sanitize file paths
+    try:
+        safe_files = [sanitize_input(f, max_length=500) for f in files_list]
+    except ValueError as e:
+        return f"Error: Invalid file path - {e}"
+    return await run_hg_command(["add"] + safe_files, cwd=path)
 
 
 @mcp.tool()
@@ -188,10 +219,21 @@ async def hg_remove(files: list[str] | str, repo_path: str = ".") -> str:
     """Remove files from version control.
 
     Equivalent to 'git rm'. Schedules files for removal from the repository.
+
+    Args:
+        files: One or more file paths to remove
+        repo_path: The repository path
     """
     path = validate_repo_path(repo_path)
     files_list = parse_list_param(files)
-    return await run_hg_command(["remove"] + files_list, cwd=path)
+    if not files_list:
+        return "Error: At least one file must be specified"
+    # Sanitize file paths
+    try:
+        safe_files = [sanitize_input(f, max_length=500) for f in files_list]
+    except ValueError as e:
+        return f"Error: Invalid file path - {e}"
+    return await run_hg_command(["remove"] + safe_files, cwd=path)
 
 
 @mcp.tool()
@@ -209,7 +251,12 @@ async def hg_update(revision: str, repo_path: str = ".") -> str:
     - Bookmark name (e.g., "main", "feature-xyz")
     """
     path = validate_repo_path(repo_path)
-    return await run_hg_command(["update", revision], cwd=path)
+    # Sanitize revision string
+    try:
+        safe_revision = sanitize_input(revision, max_length=200)
+    except ValueError as e:
+        return f"Error: Invalid revision - {e}"
+    return await run_hg_command(["update", safe_revision], cwd=path)
 
 
 @mcp.tool()
@@ -225,7 +272,12 @@ async def hg_revert(
     args = ["revert"]
     files_list = parse_list_param(files)
     if files_list:
-        args.extend(files_list)
+        # Sanitize file paths
+        try:
+            safe_files = [sanitize_input(f, max_length=500) for f in files_list]
+        except ValueError as e:
+            return f"Error: Invalid file path - {e}"
+        args.extend(safe_files)
     else:
         args.append("--all")
     return await run_hg_command(args, cwd=path)
@@ -244,7 +296,13 @@ async def hg_rename(src: str, dst: str, repo_path: str = ".") -> str:
         repo_path: The repository path
     """
     path = validate_repo_path(repo_path)
-    return await run_hg_command(["rename", src, dst], cwd=path)
+    # Sanitize file paths
+    try:
+        safe_src = sanitize_input(src, max_length=500)
+        safe_dst = sanitize_input(dst, max_length=500)
+    except ValueError as e:
+        return f"Error: Invalid file path - {e}"
+    return await run_hg_command(["rename", safe_src, safe_dst], cwd=path)
 
 
 @mcp.tool()
@@ -264,8 +322,18 @@ async def hg_cat(file: str, repo_path: str = ".", revision: str = "") -> str:
     args = ["cat"]
 
     if revision:
-        args.extend(["-r", revision])
+        # Sanitize revision string
+        try:
+            safe_revision = sanitize_input(revision, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid revision - {e}"
+        args.extend(["-r", safe_revision])
 
-    args.append(file)
+    # Sanitize file path
+    try:
+        safe_file = sanitize_input(file, max_length=500)
+    except ValueError as e:
+        return f"Error: Invalid file path - {e}"
+    args.append(safe_file)
 
     return await run_hg_command(args, cwd=path)

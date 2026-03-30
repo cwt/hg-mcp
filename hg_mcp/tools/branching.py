@@ -5,7 +5,7 @@ import json
 from mcp.types import TextContent
 
 from hg_mcp.decorators import handle_repo_errors, json_tool
-from hg_mcp.helpers import run_hg_command, validate_repo_path
+from hg_mcp.helpers import run_hg_command, sanitize_input, validate_repo_path
 from hg_mcp.server import mcp
 
 
@@ -38,10 +38,20 @@ async def hg_bookmark_create(
         revision: Revision to point the bookmark to (defaults to current parent)
     """
     path = validate_repo_path(repo_path)
-    args = ["bookmark", name]
+    # Sanitize bookmark name
+    try:
+        safe_name = sanitize_input(name, max_length=200)
+    except ValueError as e:
+        return f"Error: Invalid bookmark name - {e}"
+    args = ["bookmark", safe_name]
 
     if revision:
-        args.extend(["-r", revision])
+        # Sanitize revision string
+        try:
+            safe_revision = sanitize_input(revision, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid revision - {e}"
+        args.extend(["-r", safe_revision])
 
     return await run_hg_command(args, cwd=path)
 
@@ -58,7 +68,12 @@ async def hg_branch(repo_path: str = ".", name: str | None = None) -> str:
     """
     path = validate_repo_path(repo_path)
     if name:
-        return await run_hg_command(["branch", name], cwd=path)
+        # Sanitize branch name
+        try:
+            safe_name = sanitize_input(name, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid branch name - {e}"
+        return await run_hg_command(["branch", safe_name], cwd=path)
     return await run_hg_command(["branch"], cwd=path)
 
 
@@ -94,16 +109,26 @@ async def hg_tag(
         remove: If True, remove the tag instead of creating it
     """
     path = validate_repo_path(repo_path)
+    # Sanitize tag name
+    try:
+        safe_name = sanitize_input(name, max_length=200)
+    except ValueError as e:
+        return f"Error: Invalid tag name - {e}"
     args = ["tag"]
 
     if remove:
         args.append("--remove")
 
-    args.extend(["-m", f"Add tag {name}"])
-    args.append(name)
+    args.extend(["-m", f"Add tag {safe_name}"])
+    args.append(safe_name)
 
     if revision:
-        args.extend(["-r", revision])
+        # Sanitize revision string
+        try:
+            safe_revision = sanitize_input(revision, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid revision - {e}"
+        args.extend(["-r", safe_revision])
 
     return await run_hg_command(args, cwd=path)
 
@@ -116,7 +141,12 @@ async def hg_topic(name: str, repo_path: str = ".") -> str:
     Requires the 'topic' extension.
     """
     path = validate_repo_path(repo_path)
-    return await run_hg_command(["topic", name], cwd=path)
+    # Sanitize topic name
+    try:
+        safe_name = sanitize_input(name, max_length=200)
+    except ValueError as e:
+        return f"Error: Invalid topic name - {e}"
+    return await run_hg_command(["topic", safe_name], cwd=path)
 
 
 @mcp.tool()
