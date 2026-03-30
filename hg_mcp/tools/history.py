@@ -167,8 +167,7 @@ async def hg_histedit(
     args = ["histedit"]
 
     # Track temp file for cleanup
-    commands_file_exists = False
-    commands_file = ""
+    commands_file: str | None = None
 
     if revision:
         args.extend(["-r", revision])
@@ -181,25 +180,28 @@ async def hg_histedit(
         )
         if "\n" in commands or starts_with_cmd:
             # Inline commands - create temp file
-            with tempfile.NamedTemporaryFile(
+            temp_file = tempfile.NamedTemporaryFile(
                 mode="w", suffix=".histedit", delete=False
-            ) as f:
-                f.write(commands)
-                commands_file = f.name
-                commands_file_exists = True
+            )
+            try:
+                temp_file.write(commands)
+                commands_file = temp_file.name
+            finally:
+                temp_file.close()
             args.extend(["--commands", commands_file])
         else:
             # File path
             args.extend(["--commands", commands])
 
-    result = await run_hg_command(args, cwd=path)
-
-    # Clean up temp file
-    if commands_file_exists:
-        try:
-            Path(commands_file).unlink()
-        except Exception:
-            pass
+    try:
+        result = await run_hg_command(args, cwd=path)
+    finally:
+        # Clean up temp file
+        if commands_file:
+            try:
+                Path(commands_file).unlink()
+            except OSError:
+                pass  # Best effort cleanup
 
     return result
 

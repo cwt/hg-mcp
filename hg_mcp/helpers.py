@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import subprocess
 import sys
 from pathlib import Path
@@ -11,6 +12,8 @@ from hg_mcp.commands import (
     EXTENSION_HINTS,
     JSON_SUPPORTED_COMMANDS,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def setup_event_loop() -> None:
@@ -128,10 +131,8 @@ async def run_hg_command(
     if not args:
         return "Error: No command provided."
 
-    is_json = False
     # Automatically add -T json for commands that support it
     if use_json and args[0] in JSON_SUPPORTED_COMMANDS:
-        is_json = True
         # Check if -T is already specified
         if "-T" not in args and "--template" not in args:
             cmd_args = args + ["-T", "json"]
@@ -168,12 +169,12 @@ async def run_hg_command(
             return f"Error: {error_output}{hint}"
 
         # Minimize JSON output using Python's built-in json module
-        if is_json and output:
+        if output:
             try:
                 data = json.loads(output)
                 output = json.dumps(data, separators=(",", ":"))
-            except Exception:
-                # Fallback to original output if parsing fails
+            except json.JSONDecodeError:
+                # Expected: output is not valid JSON, return as-is
                 pass
 
         return output
@@ -183,6 +184,7 @@ async def run_hg_command(
             "Error: Mercurial (hg) command not found. Please install Mercurial."
         )
     except Exception as e:
+        logger.exception("Unexpected error running hg command: %s", args)
         return f"Error executing hg command: {e}"
 
 
@@ -204,7 +206,6 @@ def parse_list_param(
     if param is None:
         return default if default is not None else []
     if isinstance(param, list):
-        # Type guard ensures this is list[str]
         return param
     if isinstance(param, str):
         # Could be a JSON array string or single value
@@ -219,5 +220,6 @@ def parse_list_param(
                 # Not valid JSON, treat as single value
                 return [param]
         return [param]
-    # This should never happen, but return empty list as fallback
+    # Defensive fallback - should be unreachable with proper typing
+    # Kept for runtime safety in case of dynamic typing violations
     return []  # type: ignore[unreachable]

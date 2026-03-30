@@ -1,10 +1,14 @@
 """Repository inspection tools for hg-mcp server."""
 
+import logging
+
 from mcp.types import TextContent
 
 from hg_mcp.decorators import handle_repo_errors, json_tool
 from hg_mcp.helpers import format_bytes, run_hg_command, validate_repo_path
 from hg_mcp.server import mcp
+
+logger = logging.getLogger(__name__)
 
 
 @mcp.tool()
@@ -105,6 +109,7 @@ async def hg_largefiles(repo_path: str = ".") -> str:
             largefiles.append((rel_path, size))
 
     except Exception as e:
+        logger.exception("Error reading largefiles")
         return f"Error reading largefiles: {e}"
 
     if not largefiles:

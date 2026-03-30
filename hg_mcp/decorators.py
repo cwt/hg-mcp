@@ -1,15 +1,21 @@
 """Decorators for MCP tool output handling."""
 
 import functools
-import inspect
+import logging
 from collections.abc import Awaitable, Callable
+from typing import ParamSpec, TypeVar
 
 from mcp.types import Annotations, TextContent
 
+logger = logging.getLogger(__name__)
+
+P = ParamSpec("P")
+R = TypeVar("R", bound=str | list[TextContent])
+
 
 def json_tool(
-    func: Callable[..., Awaitable[list[TextContent] | str]],
-) -> Callable[..., Awaitable[list[TextContent]]]:
+    func: Callable[P, Awaitable[list[TextContent] | str]],
+) -> Callable[P, Awaitable[list[TextContent]]]:
     """Decorator for tools that return JSON output.
 
     Wraps the returned JSON string in TextContent with audience: ["assistant"]
@@ -20,9 +26,7 @@ def json_tool(
     """
 
     @functools.wraps(func)
-    async def wrapper(  # type: ignore[no-untyped-def]
-        *args, **kwargs
-    ) -> list[TextContent]:
+    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> list[TextContent]:
         result = await func(*args, **kwargs)
 
         # If result is an error (str type), return as plain text in TextContent
@@ -49,12 +53,13 @@ def json_tool(
             )
         ]
 
+    wrapper._is_json_tool = True  # type: ignore[attr-defined]
     return wrapper
 
 
 def handle_repo_errors(
-    func: Callable[..., Awaitable[str | list[TextContent]]],
-) -> Callable[..., Awaitable[str | list[TextContent]]]:
+    func: Callable[P, Awaitable[str | list[TextContent]]],
+) -> Callable[P, Awaitable[str | list[TextContent]]]:
     """Decorator to handle common repository validation errors.
 
     For functions decorated with @json_tool, returns errors as list[TextContent]
@@ -64,8 +69,8 @@ def handle_repo_errors(
     from mcp.types import Annotations as AnnotationsType
 
     @functools.wraps(func)
-    async def wrapper(  # type: ignore[no-untyped-def]
-        *args, **kwargs
+    async def wrapper(
+        *args: P.args, **kwargs: P.kwargs
     ) -> str | list[TextContent]:
         # We assume the first argument or 'repo_path' kwarg is the path
         # But since we invoke validate_repo_path inside the tools,
@@ -84,12 +89,9 @@ def handle_repo_errors(
             else:
                 error_msg = f"Error: {msg}"
 
-            # Check if the wrapped function is already decorated with @json_tool
-            # by looking for the wrapper attribute or checking return type annotation
-            hints = inspect.getfullargspec(func).annotations.get("return", None)
-            is_json_tool = hints == list[TextContent] or "json_tool" in str(
-                func
-            )
+            # Check if the wrapped function is decorated with @json_tool
+            # using the marker attribute set by the decorator
+            is_json_tool = getattr(func, "_is_json_tool", False)
 
             if is_json_tool:
                 return [
