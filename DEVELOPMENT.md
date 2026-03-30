@@ -69,7 +69,7 @@ async def hg_tag(
 ) -> str:
     # name is required - no validation needed since Python enforces it
     # ...
-```bash
+```
 
 ```python
 @mcp.tool()
@@ -80,7 +80,7 @@ async def hg_commit(
     files: Optional[List[str]] = None,  # 3. Optional param last
 ) -> str:
     # ...
-```bash
+```
 
 ```python
 @mcp.tool()
@@ -88,7 +88,7 @@ async def hg_commit(
 async def hg_status(repo_path: str = ".") -> str:
     # Only repo_path - simplest case
     # ...
-```bash
+```
 
 ```python
 @mcp.tool()
@@ -98,7 +98,7 @@ async def hg_add(
     repo_path: str = ".",      # 2. repo_path after required params
 ) -> str:
     # ...
-```bash
+```
 
 ```python
 @mcp.tool()
@@ -109,7 +109,7 @@ async def hg_strip(
     keep: bool = False,        # 3. Optional param last
 ) -> str:
     # ...
-```bash
+```
 
 **✗ INCORRECT:**
 
@@ -121,7 +121,7 @@ async def hg_tag(
     revision: str = "",
     remove: bool = False,
 ) -> str:
-```bash
+```
 
 ```python
 # WRONG: repo_path is in the middle of optional params
@@ -131,7 +131,7 @@ async def hg_rebase(
     dest: str = "",
     collapse: bool = False,
 ) -> str:
-```bash
+```
 
 ```python
 # WRONG: optional param 'keep' comes before repo_path
@@ -140,7 +140,7 @@ async def hg_strip(
     keep: bool = False,        # Optional param should come AFTER repo_path
     repo_path: str = ".",
 ) -> str:
-```bash
+```
 
 ```python
 # WRONG: optional param 'source' comes before repo_path
@@ -149,18 +149,18 @@ async def hg_transplant(
     source: str = "",          # Optional param should come AFTER repo_path
     repo_path: str = ".",
 ) -> str:
-```bash
+```
 
 ### Quick Reference Table
 
 <!-- markdownlint-disable MD013 -->
-|  Pattern | Order | Example  |
-| ---------|-------|--------- |
-|  Only `repo_path` | `repo_path` | `hg_status(repo_path)`  |
-|  Required + `repo_path` | `required`, `repo_path` | `hg_add(files, repo_path)`  |
-|  `repo_path` + Optional | `repo_path`, `optional` | `hg_revert(repo_path, files)`  |
-|  Required + `repo_path` + Optional | `required`, `repo_path`, `optional` | `hg_commit(message, repo_path, files)`  |
-|  Required + `repo_path` + Multiple Optional | `required`, `repo_path`, `optional...` | `hg_tag(name, repo_path, revision, remove)`  |
+|  Pattern                                    | Order                                  | Example                                     |
+| --------------------------------------------|----------------------------------------|-------------------------------------------- |
+|  Only `repo_path`                           | `repo_path`                            | `hg_status(repo_path)`                      |
+|  Required + `repo_path`                     | `required`, `repo_path`                | `hg_add(files, repo_path)`                  |
+|  `repo_path` + Optional                     | `repo_path`, `optional`                | `hg_revert(repo_path, files)`               |
+|  Required + `repo_path` + Optional          | `required`, `repo_path`, `optional`    | `hg_commit(message, repo_path, files)`      |
+|  Required + `repo_path` + Multiple Optional | `required`, `repo_path`, `optional...` | `hg_tag(name, repo_path, revision, remove)` |
 <!-- markdownlint-enable MD013 -->
 
 ## Adding New Tools
@@ -183,7 +183,7 @@ When adding a new MCP tool:
 
 Before committing changes, always run the following scripts in order:
 
-```bash
+```console
 # 1. Run linting and auto-fix issues
 ./scripts/lint-check-and-fix.sh
 
@@ -195,18 +195,18 @@ Before committing changes, always run the following scripts in order:
 
 # 4. Format code before final commit
 ./scripts/code-format.sh
-```bash
+```
 
 **All linting and type checking errors must be fixed before committing.**
 
 ### Script Details
 
 <!-- markdownlint-disable MD013 -->
-|  Script | Description  |
-| --------|------------- |
-|  `lint-check-and-fix.sh` | Runs `ruff check --fix` to lint and auto-fix issues  |
-|  `type-check.sh` | Runs `mypy` for static type checking  |
-|  `code-format.sh` | Runs `black` formatter and removes trailing whitespace  |
+|  Script                  | Description                                             |
+| -------------------------|-------------------------------------------------------- |
+|  `lint-check-and-fix.sh` | Runs `ruff check --fix` to lint and auto-fix issues     |
+|  `type-check.sh`         | Runs `mypy` for static type checking                    |
+|  `code-format.sh`        | Runs `black` formatter and removes trailing whitespace  |
 <!-- markdownlint-enable MD013 -->
 
 ## Testing New Tools
@@ -217,16 +217,16 @@ All test repositories are created in the fastest available RAM-backed
 storage for each platform:
 
 <!-- markdownlint-disable MD013 -->
-|  Platform | Location | Speed | Notes  |
-| ----------|----------|-------|------- |
+|  Platform  | Location           | Speed                        | Notes                      |
+| -----------|--------------------|------------------------------|--------------------------- |
 |  **Linux** | `/dev/shm` (tmpfs) | ~10-100x faster (RAM-backed) | Built-in, no setup needed  |
-|  **macOS** | `/tmp` (APFS) | Standard disk speed | No native tmpfs by default  |
-|  **WSL** | `/dev/shm` (tmpfs) | ~10-100x faster (RAM-backed) | Inherits from Linux kernel  |
+|  **macOS** | `/tmp` (APFS)      | Standard disk speed          | No native tmpfs by default |
+|  **WSL**   | `/dev/shm` (tmpfs) | ~10-100x faster (RAM-backed) | Inherits from Linux kernel |
 <!-- markdownlint-enable MD013 -->
 
 **macOS users:** You can manually set up tmpfs for faster tests:
 
-```bash
+```console
 # Option 1: Create tmpfs mount (requires sudo)
 sudo mount_tmpfs tmpfs /tmpfs -o size=2g
 export TMPDIR=/tmpfs
@@ -234,7 +234,7 @@ export TMPDIR=/tmpfs
 # Option 2: Create RAM disk (requires sudo)
 diskutil erasevolume HFS+ "RAMDisk" $(hdiutil attach -nomount ram://4194304)
 export TMPDIR=/Volumes/RAMDisk
-```bash
+```
 
 This provides:
 
@@ -246,19 +246,19 @@ This provides:
 
 To verify tests are running on tmpfs (Linux):
 
-```bash
+```console
 # Check if /dev/shm is available and on tmpfs
 df -h /dev/shm
 
 # During test execution, verify temp dirs are created there
 ls -la /dev/shm/tmp*
-```bash
+```
 
 ### Running Tests
 
 Test new tools using the pytest test suite:
 
-```bash
+```console
 # Run all tests
 pytest
 
@@ -276,23 +276,23 @@ pytest -v
 
 # Run with coverage report
 pytest --cov=hg_mcp --cov-report=term-missing
-```bash
+```
 
 ### Test Fixtures
 
 The following fixtures are available in `tests/conftest.py`:
 
 <!-- markdownlint-disable MD013 -->
-|  Fixture | Description  |
-| ---------|------------- |
-|  `temp_dir` | Temporary directory in /dev/shm  |
-|  `hg_repo` | Isolated repo with NO extensions  |
-|  `hg_repo_with_commits` | Repo with 5 sample commits  |
-|  `hg_repo_with_extensions` | Repo with configurable extensions  |
-|  `hg_repo_with_branches` | Repo with feature branch  |
-|  `hg_repo_with_bookmarks` | Repo with bookmarks  |
-|  `hg_repo_with_tags` | Repo with tags  |
-|  `hg_repo_with_remote` | Repo with remote configured  |
+|  Fixture                   | Description                       |
+| ---------------------------|---------------------------------- |
+|  `temp_dir`                | Temporary directory in /dev/shm   |
+|  `hg_repo`                 | Isolated repo with NO extensions  |
+|  `hg_repo_with_commits`    | Repo with 5 sample commits        |
+|  `hg_repo_with_extensions` | Repo with configurable extensions |
+|  `hg_repo_with_branches`   | Repo with feature branch          |
+|  `hg_repo_with_bookmarks`  | Repo with bookmarks               |
+|  `hg_repo_with_tags`       | Repo with tags                    |
+|  `hg_repo_with_remote`     | Repo with remote configured       |
 <!-- markdownlint-enable MD013 -->
 
 ### Manual Testing
@@ -307,19 +307,19 @@ import asyncio
 
 result = asyncio.run(hg_tags("."))
 print(result)
-```bash
+```
 
 ## Commit Messages
 
 Follow conventional commit format:
 
-```bash
+```text
 <type>: <description>
 
 [Optional body with more details]
 
 Tools added/modified: <list of tools>
-```bash
+```
 
 Examples:
 
@@ -335,7 +335,7 @@ includes the correct version number.
 
 ### Workflow
 
-```bash
+```console
 # 1. Update version in pyproject.toml
 # Edit pyproject.toml and change the version field:
 # version = "X.Y.Z"
@@ -347,7 +347,7 @@ hg commit pyproject.toml -m "chore: Bump version to vX.Y.Z"
 hg tag -m "Release vX.Y.Z" vX.Y.Z
 
 # 4. Build and publish to PyPI (if applicable)
-```bash
+```
 
 ### Why This Order Matters
 
