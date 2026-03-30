@@ -902,6 +902,10 @@ async def hg_histedit(
     path = validate_repo_path(repo_path)
     args = ["histedit"]
 
+    # Track temp file for cleanup
+    commands_file_exists = False
+    commands_file = ""
+
     if revision:
         args.extend(["-r", revision])
 
@@ -920,12 +924,22 @@ async def hg_histedit(
             ) as f:
                 f.write(commands)
                 commands_file = f.name
+                commands_file_exists = True
             args.extend(["--commands", commands_file])
         else:
             # File path
             args.extend(["--commands", commands])
 
-    return await run_hg_command(args, cwd=path)
+    result = await run_hg_command(args, cwd=path)
+
+    # Clean up temp file
+    if commands_file_exists:
+        try:
+            Path(commands_file).unlink()
+        except Exception:
+            pass
+
+    return result
 
 
 @mcp.tool()
