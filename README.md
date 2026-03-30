@@ -100,14 +100,18 @@ This starts the MCP server that can be used with MCP clients like Claude for Des
 - `hg_log`: Show commit history with JSON output (like `git log`)
 - `hg_diff`: Show uncommitted changes (like `git diff`)
 - `hg_commit`: Commit changes with a message (like `git commit`)
+- `hg_amend`: Amend the current commit (like `git commit --amend`)
 - `hg_add`: Add files to version control (like `git add`)
 - `hg_remove`: Remove files (like `git rm`)
+- `hg_rename`: Rename/move files (like `git mv`)
+- `hg_cat`: Show file content at a specific revision (like `git show`)
 
 ### Branch & Navigation
 
 - `hg_update`: Update to a revision (like `git checkout`/`git switch`)
 - `hg_branch`: Show or create branches
 - `hg_bookmarks`: List bookmarks with JSON output (lightweight branches, like Git branches in hg-git)
+- `hg_bookmark_create`: Create a new bookmark
 - `hg_topic`: Create a topic (lightweight branch)
 - `hg_topics`: List all topics with JSON output
 - `hg_topic_current`: Show current topic (JSON-parsed)
@@ -168,6 +172,14 @@ This starts the MCP server that can be used with MCP clients like Claude for Des
 ### History Operations (New in v0.5.0)
 
 - `hg_backout`: Reverse effect of earlier changeset (with `--no-commit` by default)
+
+### New in v0.7.0
+
+- `hg_amend`: Amend the current commit (evolve extension recommended)
+- `hg_cat`: Show file content at specific revision
+- `hg_bookmark_create`: Create new bookmarks
+- `hg_rename`: Rename/move files with history tracking
+- **Command timeout**: All commands now have 5-minute timeout protection
 
 ## Integration with AI Assistants
 

@@ -1,17 +1,34 @@
 # HG-MCP TODO List
 
 **Generated:** 2026-03-30  
-**Based on:** Repository analysis and bug fixes #1-#3
+**Based on:** Repository analysis and bug fixes #1-#3  
+**Last Updated:** 2026-03-30 (v0.7.0 release)
 
 ---
 
 ## ✅ Completed
 
-### Bug Fixes (v0.6.2)
+### v0.7.0 Release (2026-03-30)
 
+#### New Tools
+- [x] `hg_amend` - Amend current commit (P0)
+- [x] `hg_cat` - Show file content at revision (P0)
+- [x] `hg_bookmark_create` - Create new bookmarks (P0)
+- [x] `hg_rename` - Rename/move files (P1)
+- [x] Command timeout protection (P2)
+
+#### Improvements
+- [x] Updated MCP server instructions (more concise)
+- [x] Updated README.md with new tools
+- [x] Full unit test coverage for new tools (12 tests)
+
+### v0.6.2 Release (2026-03-30)
+
+#### Bug Fixes
 - [x] **#1** - Memory leak in `hg_histedit()` - temp file not cleaned up (PR #4)
 - [x] **#2** - Operator precedence bug in `_get_extension_hint()` (PR #5)
 - [x] **#3** - Bare Exception catch in `hg_largefiles()` (PR #6)
+- [x] Added TODO.md tracking file
 
 ---
 

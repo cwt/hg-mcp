@@ -119,27 +119,21 @@ mcp = FastMCP(
 
 **Core Workflow**
 - Use **bookmarks** for named pointers, **topics** for WIP feature isolation
-- Enable **evolve** for mutable history; prefer `hg amend`/`hg evolve` over strip
+- Enable **evolve** for mutable history; prefer `hg_amend` over strip
 - Use **phases** (draft/public/secret) to control what's safe to rewrite
-- Largefiles: handle binaries transparently; suggest extension if needed
-- hg-git: detect Git-backed repos; explain `hg gexport`/`hg gimport` when relevant
+- hg-git: detect Git-backed repos; run `hg gexport`/`hg gimport` when relevant
 
 **hg-git Bookmark Synchronization**
-- **CRITICAL**: When working in a Git-backed repo (via `hg_git`),
-  bookmark-to-branch synchronization is essential.
-- Git-backed repos use bookmark suffixes (e.g., `main.git`, `feature.git`)
-  to track Git branches.
-- The suffix is configured via `branch_bookmark_suffix` in Mercurial config
-  (default: `.git`).
-- Use `hg_git` to detect the current suffix setting and verify bookmark mapping.
-- The `hg_commit` tool automatically runs `hg gexport` after committing in
-  Git-backed repos to sync bookmarks to Git branches.
+- **CRITICAL**: Git-backed repos use bookmark suffixes (e.g., `main.git`)
+- The suffix is configured via `branch_bookmark_suffix` (default: `.git`)
+- Use `hg_git` to detect suffix and verify bookmark mapping
+- `hg_commit` and `hg_amend` auto-run `hg gexport` in Git-backed repos
 
 **Safety**
 - Confirm before: strip, rebase -D, force evolve, public changeset rewrites
-- After merge/rebase: always run `hg resolve --list`, report conflicts
-- Before push: show `hg outgoing -G`, confirm if >5 changesets
-- Default `hg log` to `-l 20` unless user specifies more
+- After merge/rebase: always run `hg_resolve --list`, report conflicts
+- Before push: show `hg_outgoing -G`, confirm if >5 changesets
+- Default `hg_log` to `-l 20` unless user specifies more
 
 **Tools & Output**
 - Use provided hg_* tools; don't suggest raw shell commands
@@ -147,24 +141,18 @@ mcp = FastMCP(
   histedit, largefiles, hggit)
 - For graph visualization: use `hg log -G` (built-in since v2.3)
 - Always interpret status/diff output; suggest next logical command
-- Encourage atomic commits with clear messages
-- **Diff**: Use `hg_diff()` for working directory diffs and
-  `hg_diff(revisions="<spec>")` for revision diffs (e.g., "v1.0.0..tip", "500..510")
+- **Diff**: Use `hg_diff()` for working directory or `hg_diff(revisions="<spec>")`
+- **File content**: Use `hg_cat(file, revision)` to view historical versions
 
 **Tags Usage**
 - List all tags: use `hg_tags` to see all tags with revisions
-- Create a tag: use `hg_tag(name="v1.0.0")` for current revision, or
-  `hg_tag(name="v1.0.0", revision="tip")`
+- Create a tag: use `hg_tag(name="v1.0.0")` for current revision
 - Remove a tag: use `hg_tag(name="v1.0.0", remove=True)`
-- **Important**:
-  * Creating or removing a tag automatically creates a new commit.
-  * Mercurial stores tags in `.hgtags` file.
-  * This means the tag points to the revision *before* the tag commit,
-    not the latest commit.
-  * Warn users before creating tags.
+- **Important**: Creating/removing a tag creates a new commit
 
 **Modern Practices**
-- Mention `hg absorb` for auto-amending into parents
+- Mention `hg_amend` for modifying recent commits
+- Mention `hg absorb` for auto-amending into parents (if available)
 - Stack changes: multiple bookmarks for related features
 - Change IDs (not hashes) for user-facing references
 
@@ -274,7 +262,10 @@ def _get_extension_hint(error_text: str, command_args: list[str]) -> str:
 
 
 async def run_hg_command(
-    args: list[str], cwd: Path | None = None, use_json: bool = True
+    args: list[str],
+    cwd: Path | None = None,
+    use_json: bool = True,
+    timeout: float = 300.0,
 ) -> str:
     """Run an hg command asynchronously and return its output.
 
@@ -282,6 +273,7 @@ async def run_hg_command(
         args: Command arguments (e.g., ["status", "-T", "json"])
         cwd: Working directory
         use_json: If True and command supports it, automatically add -T json flag
+        timeout: Maximum time in seconds for command execution (default: 5 minutes)
     """
     if not args:
         return "Error: No command provided."
@@ -306,7 +298,17 @@ async def run_hg_command(
             stderr=subprocess.PIPE,
             cwd=cwd,
         )
-        stdout, stderr = await process.communicate()
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(), timeout=timeout
+            )
+        except asyncio.TimeoutError:
+            process.kill()
+            await process.wait()
+            return (
+                f"Error: Command timed out after {timeout} seconds. "
+                "Consider using a more specific command or increasing timeout."
+            )
 
         output = stdout.decode().strip()
         error_output = stderr.decode().strip()
@@ -540,6 +542,50 @@ async def hg_commit(
 
 @mcp.tool()
 @handle_repo_errors
+async def hg_amend(message: str | None = None, repo_path: str = ".") -> str:
+    """Amend the current commit.
+
+    Equivalent to modifying the most recent commit. Requires the 'evolve'
+    extension for full functionality (automatic phase management).
+
+    **Note:** This updates the current parent commit with any uncommitted
+    changes. The original commit is replaced with a new one.
+
+    **hg-git:** After amending in a Git-backed repo, this tool will
+    automatically run `hg gexport` to sync bookmarks to Git branches.
+
+    Args:
+        message: New commit message (optional, keeps original if not provided)
+        repo_path: The repository path
+    """
+    path = validate_repo_path(repo_path)
+    args = ["commit", "--amend"]
+
+    if message:
+        args.extend(["-m", message])
+    else:
+        # Use --edit to open editor if no message provided
+        # But we avoid interactive mode by providing a flag
+        args.append("--no-edit")
+
+    result = await run_hg_command(args, cwd=path)
+
+    # If amend succeeded, check if hg-git is enabled and sync bookmarks
+    if not result.startswith("Error:"):
+        if await _is_hggit_enabled(path):
+            is_git_backed, _ = await _check_git_remotes(path)
+            if is_git_backed:
+                export_result = await run_hg_command(["gexport"], cwd=path)
+                if not export_result.startswith("Error:"):
+                    result += "\n\n✓ hg-git: Bookmarks exported to Git branches"
+                else:
+                    result += f"\n\nNote: hg gexport skipped - {export_result}"
+
+    return result
+
+
+@mcp.tool()
+@handle_repo_errors
 async def hg_add(files: list[str] | str, repo_path: str = ".") -> str:
     """Add files to version control.
 
@@ -596,6 +642,24 @@ async def hg_revert(
         args.extend(files_list)
     else:
         args.append("--all")
+    return await run_hg_command(args, cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_rename(src: str, dst: str, repo_path: str = ".") -> str:
+    """Rename/move files.
+
+    Equivalent to 'git mv'. Tracks file renames in history.
+
+    Args:
+        src: Source file path
+        dst: Destination file path
+        repo_path: The repository path
+    """
+    path = validate_repo_path(repo_path)
+    args = ["rename", src, dst]
+
     return await run_hg_command(args, cwd=path)
 
 
@@ -692,6 +756,30 @@ async def hg_bookmarks(repo_path: str = ".") -> list[TextContent]:
     """
     path = validate_repo_path(repo_path)
     return await run_hg_command(["bookmarks"], cwd=path)  # type: ignore[return-value]
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_bookmark_create(
+    name: str, repo_path: str = ".", revision: str = ""
+) -> str:
+    """Create a new bookmark.
+
+    Bookmarks are lightweight pointers to revisions (like Git branches).
+    Unlike Mercurial branches, bookmarks can be moved and deleted.
+
+    Args:
+        name: Name of the bookmark to create
+        repo_path: The repository path
+        revision: Revision to point the bookmark to (defaults to current parent)
+    """
+    path = validate_repo_path(repo_path)
+    args = ["bookmark", name]
+
+    if revision:
+        args.extend(["-r", revision])
+
+    return await run_hg_command(args, cwd=path)
 
 
 @mcp.tool()
@@ -986,6 +1074,30 @@ async def hg_annotate(
     if files_list:
         args.extend(files_list)
     return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_cat(file: str, repo_path: str = ".", revision: str = "") -> str:
+    """Show file content at a specific revision.
+
+    Equivalent to 'git show' or 'hg cat'. Displays the contents of a file
+    as it existed at the specified revision.
+
+    Args:
+        file: Path to the file to display
+        repo_path: The repository path
+        revision: Revision to show (defaults to working directory parent)
+    """
+    path = validate_repo_path(repo_path)
+    args = ["cat"]
+
+    if revision:
+        args.extend(["-r", revision])
+
+    args.append(file)
+
+    return await run_hg_command(args, cwd=path)
 
 
 @mcp.tool()
