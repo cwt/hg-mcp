@@ -1253,7 +1253,7 @@ async def hg_largefiles(repo_path: str = ".") -> str:
                 lines = content.split("\n")
                 if len(lines) >= 2 and lines[1].isdigit():
                     size = int(lines[1])
-            except Exception:
+            except (ValueError, UnicodeDecodeError, OSError):
                 # If we can't read/parse the standin, just report 0 size
                 pass
 
