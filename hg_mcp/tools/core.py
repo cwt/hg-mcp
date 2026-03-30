@@ -1,0 +1,245 @@
+"""Core Mercurial tools - status, log, diff, commit, add, remove, update, revert."""
+
+from mcp.types import Annotations, TextContent
+
+from hg_mcp.commands import MAX_LOG_LIMIT
+from hg_mcp.decorators import handle_repo_errors, json_tool
+from hg_mcp.helpers import parse_list_param, run_hg_command, validate_repo_path
+from hg_mcp.hggit import _check_git_remotes, _is_hggit_enabled
+
+
+@json_tool
+@handle_repo_errors
+async def hg_status(repo_path: str = ".") -> list[TextContent]:
+    """Show the status of files in the working directory.
+
+    Equivalent to 'git status'. Shows modified, added, removed files.
+    Returns a clear message even when there are no changes.
+    """
+    path = validate_repo_path(repo_path)
+    return await run_hg_command(["status"], cwd=path)  # type: ignore[return-value]
+
+
+@json_tool
+@handle_repo_errors
+async def hg_log(repo_path: str = ".", limit: int = 10) -> list[TextContent]:
+    """Show commit history.
+
+    Equivalent to 'git log'. Displays revisions with changeset ID, author,
+    date, and message.
+    """
+    if limit < 1:
+        return [
+            TextContent(
+                type="text",
+                text="Error: limit must be at least 1",
+                annotations=Annotations(audience=["user"], priority=1.0),
+            )
+        ]
+    if limit > MAX_LOG_LIMIT:
+        return [
+            TextContent(
+                type="text",
+                text=f"Error: limit exceeds maximum allowed value of {MAX_LOG_LIMIT}",
+                annotations=Annotations(audience=["user"], priority=1.0),
+            )
+        ]
+
+    path = validate_repo_path(repo_path)
+    return await run_hg_command(["log", "--limit", str(limit)], cwd=path)  # type: ignore[return-value]
+
+
+@handle_repo_errors
+async def hg_diff(repo_path: str = ".", revisions: str = "") -> str:
+    """Show changes in the working directory or between revisions.
+
+    Equivalent to 'git diff'. Shows line-by-line changes to tracked files.
+
+    Args:
+        repo_path: The repository path
+        revisions: Revision spec (e.g., 'v1.0.0..tip', 'tip~3 tip', '0..2', '500..510')
+
+    Examples:
+        - hg_diff() -> diff of working directory
+        - hg_diff(revisions="500..510") -> diff from 500 to 510
+        - hg_diff(revisions="v1.0.0..tip") -> diff from tag v1.0.0 to tip
+    """
+    path = validate_repo_path(repo_path)
+    args = ["diff"]
+    if revisions:
+        args.extend(["-r", revisions])
+    return await run_hg_command(args, cwd=path)
+
+
+@handle_repo_errors
+async def hg_commit(
+    message: str, repo_path: str = ".", files: list[str] | str | None = None
+) -> str:
+    """Commit changes with a message.
+
+    Equivalent to 'git commit'. Records changes in the repository with a
+    description.
+
+    **Note:** Mercurial has no staging area; all modified files are committed.
+    To select specific files, pass them in the `files` parameter.
+
+    **hg-git:** After committing in a Git-backed repo, this tool will
+    automatically check if bookmark synchronization is needed and run
+    `hg gexport` if hg-git is enabled.
+    """
+    path = validate_repo_path(repo_path)
+    args = ["commit", "-m", message]
+    files_list = parse_list_param(files)
+    if files_list:
+        args.extend(files_list)
+
+    result = await run_hg_command(args, cwd=path)
+
+    # If commit succeeded, check if hg-git is enabled and sync bookmarks
+    if not result.startswith("Error:"):
+        if await _is_hggit_enabled(path):
+            is_git_backed, _ = await _check_git_remotes(path)
+            if is_git_backed:
+                export_result = await run_hg_command(["gexport"], cwd=path)
+                if not export_result.startswith("Error:"):
+                    result += "\n\n✓ hg-git: Bookmarks exported to Git branches"
+                else:
+                    result += f"\n\nNote: hg gexport skipped - {export_result}"
+
+    return result
+
+
+@handle_repo_errors
+async def hg_amend(message: str | None = None, repo_path: str = ".") -> str:
+    """Amend the current commit.
+
+    Equivalent to modifying the most recent commit. Requires the 'evolve'
+    extension for full functionality (automatic phase management).
+
+    **Note:** This updates the current parent commit with any uncommitted
+    changes. The original commit is replaced with a new one.
+
+    **hg-git:** After amending in a Git-backed repo, this tool will
+    automatically run `hg gexport` to sync bookmarks to Git branches.
+
+    Args:
+        message: New commit message (optional, keeps original if not provided)
+        repo_path: The repository path
+    """
+    path = validate_repo_path(repo_path)
+    args = ["commit", "--amend"]
+
+    if message:
+        args.extend(["-m", message])
+    else:
+        args.append("--no-edit")
+
+    result = await run_hg_command(args, cwd=path)
+
+    # If amend succeeded, check if hg-git is enabled and sync bookmarks
+    if not result.startswith("Error:"):
+        if await _is_hggit_enabled(path):
+            is_git_backed, _ = await _check_git_remotes(path)
+            if is_git_backed:
+                export_result = await run_hg_command(["gexport"], cwd=path)
+                if not export_result.startswith("Error:"):
+                    result += "\n\n✓ hg-git: Bookmarks exported to Git branches"
+                else:
+                    result += f"\n\nNote: hg gexport skipped - {export_result}"
+
+    return result
+
+
+@handle_repo_errors
+async def hg_add(files: list[str] | str, repo_path: str = ".") -> str:
+    """Add files to version control.
+
+    Equivalent to 'git add'. Schedules new or modified files for commit.
+    """
+    path = validate_repo_path(repo_path)
+    files_list = parse_list_param(files)
+    return await run_hg_command(["add"] + files_list, cwd=path)
+
+
+@handle_repo_errors
+async def hg_remove(files: list[str] | str, repo_path: str = ".") -> str:
+    """Remove files from version control.
+
+    Equivalent to 'git rm'. Schedules files for removal from the repository.
+    """
+    path = validate_repo_path(repo_path)
+    files_list = parse_list_param(files)
+    return await run_hg_command(["remove"] + files_list, cwd=path)
+
+
+@handle_repo_errors
+async def hg_update(revision: str, repo_path: str = ".") -> str:
+    """Update to a specific revision.
+
+    Equivalent to 'git checkout' or 'git switch'.
+
+    **Important:** Mercurial does NOT use 'HEAD' like Git. Use these instead:
+    - `.` (dot) - Current parent revision
+    - `tip` - Most recent changeset in the repository
+    - `default` - Default branch head
+    - Specific revision ID (e.g., "123" or "abc123def")
+    - Bookmark name (e.g., "main", "feature-xyz")
+    """
+    path = validate_repo_path(repo_path)
+    return await run_hg_command(["update", revision], cwd=path)
+
+
+@handle_repo_errors
+async def hg_revert(
+    repo_path: str = ".", files: list[str] | str | None = None
+) -> str:
+    """Revert uncommitted changes.
+
+    Equivalent to 'git checkout -- <files>' or 'git restore <files>'.
+    """
+    path = validate_repo_path(repo_path)
+    args = ["revert"]
+    files_list = parse_list_param(files)
+    if files_list:
+        args.extend(files_list)
+    else:
+        args.append("--all")
+    return await run_hg_command(args, cwd=path)
+
+
+@handle_repo_errors
+async def hg_rename(src: str, dst: str, repo_path: str = ".") -> str:
+    """Rename/move files.
+
+    Equivalent to 'git mv'. Tracks file renames in history.
+
+    Args:
+        src: Source file path
+        dst: Destination file path
+        repo_path: The repository path
+    """
+    path = validate_repo_path(repo_path)
+    return await run_hg_command(["rename", src, dst], cwd=path)
+
+
+@handle_repo_errors
+async def hg_cat(file: str, repo_path: str = ".", revision: str = "") -> str:
+    """Show file content at a specific revision.
+
+    Equivalent to 'git show' or 'hg cat'. Displays the contents of a file
+    as it existed at the specified revision.
+
+    Args:
+        file: Path to the file to display
+        repo_path: The repository path
+        revision: Revision to show (defaults to working directory parent)
+    """
+    path = validate_repo_path(repo_path)
+    args = ["cat"]
+
+    if revision:
+        args.extend(["-r", revision])
+
+    args.append(file)
+
+    return await run_hg_command(args, cwd=path)

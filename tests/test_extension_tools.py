@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from mcp.types import TextContent
 
-from hg_mcp.main import (
+from hg_mcp.tools import (
     hg_evolve,
     hg_histedit,
     hg_rebase,
@@ -149,6 +149,7 @@ class TestExtensionHints:
         """Test that rebase commands show helpful error when extension disabled."""
         result = await hg_rebase(str(hg_repo), source=".", dest="default")
         # Should show error with extension hint
+        assert isinstance(result, str)
         assert "Error" in result or "unknown" in result.lower()
 
 
