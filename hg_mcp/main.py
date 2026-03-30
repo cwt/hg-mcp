@@ -256,8 +256,7 @@ def _get_extension_hint(error_text: str, command_args: list[str]) -> str:
     is_extension_error = (
         "unknown command" in error_text.lower()
         or "unknown command" in error_text
-        or f"'{cmd}'" in error_text
-        and "unknown" in error_text.lower()
+        or (f"'{cmd}'" in error_text and "unknown" in error_text.lower())
     )
 
     if not is_extension_error:
