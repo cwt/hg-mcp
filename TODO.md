@@ -1,169 +1,128 @@
-# HG-MCP TODO List
+# TODO - v0.8.0 Development
 
-**Generated:** 2026-03-30  
-**Based on:** Repository analysis and bug fixes #1-#3
+## Lessons Learned from v0.7.x
 
----
+### What Went Wrong
 
-## ✅ Completed
+#### 1. Type Annotation Mismatch with `@json_tool` Decorator
 
-### Bug Fixes (v0.6.2)
+**Problem:** Changed return type annotations from `-> list[TextContent]` to `-> str` for functions decorated with `@json_tool`.
 
-- [x] **#1** - Memory leak in `hg_histedit()` - temp file not cleaned up (PR #4)
-- [x] **#2** - Operator precedence bug in `_get_extension_hint()` (PR #5)
-- [x] **#3** - Bare Exception catch in `hg_largefiles()` (PR #6)
+**Why it failed:** FastMCP validates tool return types against annotations. The `@json_tool` decorator wraps `str` results in `list[TextContent]`, but the annotation said `-> str`, causing validation errors.
 
----
+**Correct Pattern (v0.6.2):**
+```python
+@mcp.tool()
+@json_tool
+@handle_repo_errors
+async def hg_status(repo_path: str = ".") -> list[TextContent]:
+    """Show the status of files in the working directory."""
+    path = validate_repo_path(repo_path)
+    return await run_hg_command(["status"], cwd=path)  # type: ignore[return-value]
+```
 
-## 📋 Missing Tools
+**Key Points:**
+- Return type annotation documents what **MCP receives** (after decoration): `list[TextContent]`
+- The `# type: ignore[return-value]` comment is **necessary and correct**
+- The decorator's job is to transform `str` → `list[TextContent]`
+- Don't try to be "clever" with type annotations - follow the working pattern
 
-### P0 - Critical (Should implement first)
+#### 2. Refactoring Without Proper Testing
 
-| Tool | Description | Effort | Notes |
-|------|-------------|--------|-------|
-| `hg_amend` | Amend current commit (evolve extension) | Low | Mentioned in server instructions! |
-| `hg_cat` | Show file content at revision | Low | Equivalent to `git show` |
-| `hg_bookmark_create` | Create new bookmark | Low | Only list exists currently |
+**Problem:** v0.7.2 refactored main.py into submodules but forgot to add `@mcp.tool()` decorators, resulting in zero tools registered.
 
-### P1 - High Priority
-
-| Tool | Description | Effort | Notes |
-|------|-------------|--------|-------|
-| `hg_rename` / `hg_mv` | Rename/move files | Low | Like `git mv` |
-| `hg_copy` | Copy files with history | Low | Track file ancestry |
-| `hg_shelve` | Temporarily set aside changes | Medium | Like `git stash` |
-| `hg_unshelve` | Restore shelved changes | Medium | Requires shelve extension |
-| `hg_ignore` | Add pattern to .hgignore | Low | Common workflow |
-
-### P2 - Medium Priority
-
-| Tool | Description | Effort | Notes |
-|------|-------------|--------|-------|
-| `hg_grep` | Search commit history | Medium | Like `git log -S` |
-| `hg_blame` | Alias for `hg_annotate` | Low | Git terminology |
-| `hg_graph` | Show commit graph (`hg log -G`) | Low | Better UX |
-| `hg_parents` | Show parent revisions | Low | JSON output |
-| `hg_children` | Show child revisions | Low | JSON output |
-| **Command timeout** | Add timeout to `run_hg_command()` | Medium | Reliability fix |
-| **File validation** | Validate files exist in add/remove/annotate | Medium | Prevent silent failures |
-
-### P3 - Nice to Have
-
-| Tool | Description | Effort | Notes |
-|------|-------------|--------|-------|
-| `hg_archive` | Export repo to tarball/zip | Medium | Release snapshots |
-| `hg_bundle` | Bundle changesets | Medium | Offline transfer |
-| `hg_unbundle` | Apply bundle file | Low | Companion to bundle |
-| `hg_ancestors` | List ancestor revisions | Low | Commit lineage |
-| `hg_descendants` | List descendant revisions | Low | Forward history |
-| `hg_debug` | Run hg debug commands | Low | Advanced diagnostics |
-| `hg_stat` | Repository statistics | Low | Commits, branches, size |
-| `hg_bisect` | Binary search for bugs | Medium | Bug hunting |
-| `hg_phase` | Manage changeset phases | Medium | Draft/public/secret |
+**Lesson:** Always verify tool registration after refactoring:
+```python
+from hg_mcp.server import mcp
+print(f"Tools registered: {len(mcp._tool_manager._tools)}")
+```
 
 ---
 
-## 🔧 Missing Features
+## Features from v0.7.x to Preserve
 
-### Core Improvements
+### Code Quality Improvements (v0.7.3)
 
-- [ ] **Command timeout protection** - Prevent hanging on long operations
-- [ ] **File validation** - Check files exist before operations
-- [ ] **Interactive mode support** - Better merge conflict handling
-- [ ] **Batch operations** - Combine add+commit in one call
-- [ ] **Pre-commit hooks validation** - Check hooks before committing
+- [x] **Input sanitization** - `sanitize_input()` function for defense-in-depth
+- [x] **Better error handling** - hg-git integration wrapped in try-except
+- [x] **Temp file cleanup** - `hg_histedit` uses try-finally for guaranteed cleanup
+- [x] **Logging** - Added `logger.exception()` for debugging unexpected errors
+- [x] **Timeout race condition fix** - Catch `ProcessLookupError` in `run_hg_command`
 
-### hg-git Enhancements
+### Code Organization (v0.7.2)
 
-- [ ] **`hg_gimport`** - Import Git branches after pull
-- [ ] **`hg_gexport`** - Export bookmarks to Git (already called in commit, but could be standalone)
-- [ ] **Bookmark suffix management** - Configure branch_bookmark_suffix
-- [ ] **Git remote detection** - Auto-detect Git-backed repos in more tools
+- [x] **Modular structure** - Split into submodules by functionality:
+  - `hg_mcp/decorators.py` - Decorators
+  - `hg_mcp/helpers.py` - Helper functions
+  - `hg_mcp/server.py` - MCP server instance
+  - `hg_mcp/tools/*.py` - Tool modules by category
 
-### Extension Support
+### Test Improvements
 
-- [ ] **Absorb extension** - `hg_absorb` for auto-amending into parents
-- [ ] **Shelve extension** - Full shelve/unshelve support
-- [ ] **Patchbomb extension** - Email patches
-- [ ] **Revert extension** - Enhanced revert with revision support
-
----
-
-## 📝 Documentation Improvements
-
-- [ ] Add tool examples for each function
-- [ ] Create workflow guides (Git users migrating to Mercurial)
-- [ ] Add extension requirement badges in tool descriptions
-- [ ] Create troubleshooting guide
-- [ ] Add performance tuning guide (uvloop/winloop)
+- [x] **Faster tests** - Use `/dev/shm` (tmpfs) on Linux for ~10-100x speedup
+- [x] **Better organization** - Tests organized by functionality, not version
 
 ---
 
-## 🧪 Testing Improvements
+## Code Quality Rules for v0.8.0
 
-- [ ] Add tests for error conditions
-- [ ] Add tests for invalid repo paths
-- [ ] Add tests for malformed commands
-- [ ] Add integration tests with real Git repos (hg-git)
-- [ ] Add performance tests for large repositories
+### Before Every Commit
 
----
+```bash
+# 1. Lint check
+./scripts/lint-check-and-fix.sh
 
-## 🐛 Known Issues / Technical Debt
+# 2. Type check
+./scripts/type-check.sh
 
-- [ ] **JSON minification edge case** (Line 323) - Catches Exception silently
-- [ ] **hg_tag() message** - Tag name not escaped in commit message
-- [ ] **_get_git_branches()** - Assumes bookmarks are dicts, no validation
-- [ ] **Inconsistent error messages** - Some use "Error:" prefix, some don't
+# 3. Code format
+./scripts/code-format.sh
 
----
+# 4. Run tests
+pytest
+```
 
-## 📊 Tool Coverage Analysis
+### Type Annotation Rules
 
-### Implemented: 41 tools
+1. **Functions with `@json_tool`:**
+   - Return type: `-> list[TextContent]`
+   - Add `# type: ignore[return-value]` comment
+   - This documents what MCP receives after decoration
 
-| Category | Count | Tools |
-|----------|-------|-------|
-| Core | 8 | status, log, diff, commit, add, remove, update, revert |
-| Branching | 7 | branch, bookmarks, topic, topics, topic_current, tags, tag |
-| Remote | 5 | push, pull, paths, incoming, outgoing |
-| Merge | 3 | merge, resolve, backout |
-| History Rewriting | 5 | rebase, strip, histedit, evolve, transplant |
-| Inspection | 6 | annotate, files, summary, verify, identify, heads |
-| Patches | 2 | export, import |
-| hg-git | 1 | git |
-| Help/Config | 4 | config, extensions, help, largefiles |
+2. **Functions without `@json_tool`:**
+   - Return type: `-> str`
+   - No ignore comment needed
 
-### Missing: 20+ tools
+3. **Never change working patterns** without verifying with FastMCP first
 
-See "Missing Tools" section above for details.
+### Decorator Pattern
 
----
+```python
+def json_tool(func):
+    """Wraps str in TextContent(audience=['assistant'])."""
+    # Returns: list[TextContent]
+```
 
-## 🎯 Next Sprint Candidates
-
-**Recommended for v0.7.0:**
-
-1. `hg_amend` - Core modern workflow
-2. `hg_cat` - Basic file viewing
-3. `hg_bookmark_create` - Complete bookmark management
-4. `hg_rename` - File move support
-5. Command timeout - Reliability improvement
+```python
+def handle_repo_errors(func):
+    """Handles ValueError from validate_repo_path."""
+    # Checks for _is_json_tool marker attribute
+    # Returns errors as list[TextContent] if @json_tool, else str
+```
 
 ---
 
-## 📈 Version History
+## v0.8.0 Goals
 
-- **v0.6.2** (2026-03-30) - Bug fixes #1, #2, #3
-- **v0.6.1** - Previous release
-- **v0.6.0** - Earlier release
+1. **Stability** - No breaking changes to working patterns
+2. **Documentation** - Clear comments explaining why patterns exist
+3. **Testing** - Verify all tools work after any refactoring
+4. **Code quality** - Maintain clean lint/type-check/format
 
 ---
 
-## 📌 Notes
+## Reference
 
-- Tools marked with "Low" effort can be implemented in < 50 lines of code
-- Tools marked with "Medium" effort need 50-150 lines or complex logic
-- Priority P0 tools are blockers for common workflows
-- Priority P1 tools are frequently requested features
-- Priority P2+ tools are enhancements or edge cases
+- **v0.6.2**: Last known stable version (baseline for v0.8.0)
+- **v0.7.0-v0.7.3**: Development cycle with good ideas but some broken patterns
+- **backup-0.7.x**: Bookmark preserving v0.7.x code for reference
