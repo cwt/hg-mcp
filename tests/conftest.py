@@ -2,6 +2,8 @@
 
 Provides isolated Mercurial repositories with controlled extension configurations.
 
+All test repositories are created in /dev/shm (RAM-backed tmpfs) for maximum speed.
+
 Note: DeprecationWarnings about asyncio.get_event_loop_policy are suppressed
 due to pytest-asyncio using APIs deprecated in Python 3.14+. This is an
 upstream issue tracked at:
@@ -10,6 +12,7 @@ https://github.com/pytest-dev/pytest-asyncio/issues/713
 The warnings are harmless and will be fixed in a future pytest-asyncio release.
 """
 
+import os
 import subprocess
 import tempfile
 from collections.abc import Generator
@@ -20,8 +23,20 @@ import pytest
 
 @pytest.fixture
 def temp_dir() -> Generator[Path, None, None]:
-    """Create a temporary directory for test repositories."""
-    with tempfile.TemporaryDirectory() as tmpdir:
+    """Create a temporary directory for test repositories.
+
+    Uses the fastest available RAM-backed storage for each platform:
+    - Linux: /dev/shm (tmpfs)
+    - macOS: /tmp (APFS, no native tmpfs by default)
+    - Other: System default temp directory
+
+    Note: macOS users can manually mount tmpfs for faster tests:
+        sudo mount_tmpfs tmpfs /tmpfs -o size=2g
+    Then set TMPDIR=/tmpfs before running tests.
+    """
+    # Prefer /dev/shm for maximum speed (Linux RAM-backed tmpfs)
+    tmpdir_base = "/dev/shm" if os.path.exists("/dev/shm") else None
+    with tempfile.TemporaryDirectory(dir=tmpdir_base) as tmpdir:
         yield Path(tmpdir)
 
 

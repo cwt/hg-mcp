@@ -12,6 +12,8 @@ import pytest
 from mcp.types import TextContent
 
 from hg_mcp.tools import (
+    hg_bookmark_create,
+    hg_bookmarks,
     hg_evolve,
     hg_histedit,
     hg_rebase,
@@ -168,3 +170,75 @@ class TestHgHistedit:
         )
         # Should complete without opening editor
         assert isinstance(result, str)
+
+
+class TestHgBookmarkCreate:
+    """Tests for hg_bookmark_create tool."""
+
+    @pytest.mark.asyncio
+    async def test_create_bookmark_at_current(
+        self, hg_repo_with_commits: Path
+    ) -> None:
+        """Test creating a bookmark at current revision."""
+        result = await hg_bookmark_create(
+            name="test-bookmark", repo_path=str(hg_repo_with_commits)
+        )
+        assert isinstance(result, str)
+        assert not result.startswith("Error:")
+
+        # Verify bookmark was created
+        bookmarks = await hg_bookmarks(repo_path=str(hg_repo_with_commits))
+        bookmarks_text = _extract_text(bookmarks)
+        assert "test-bookmark" in bookmarks_text
+
+    @pytest.mark.asyncio
+    async def test_create_bookmark_at_revision(
+        self, hg_repo_with_commits: Path
+    ) -> None:
+        """Test creating a bookmark at specific revision."""
+        result = await hg_bookmark_create(
+            name="old-bookmark",
+            repo_path=str(hg_repo_with_commits),
+            revision="0",
+        )
+        assert isinstance(result, str)
+        assert not result.startswith("Error:")
+
+
+class TestCommandTimeout:
+    """Tests for command timeout in run_hg_command."""
+
+    @pytest.mark.asyncio
+    async def test_timeout_on_slow_command(
+        self, hg_repo_with_commits: Path
+    ) -> None:
+        """Test that slow commands timeout properly."""
+        from hg_mcp.helpers import run_hg_command
+
+        # Use a command with very short timeout
+        result = await run_hg_command(
+            args=["log", "-l", "1000"],  # Large limit to make it slower
+            cwd=hg_repo_with_commits,
+            timeout=0.001,  # Very short timeout to force timeout
+        )
+
+        assert isinstance(result, str)
+        assert result.startswith("Error:")
+        assert "timed out" in result.lower()
+
+    @pytest.mark.asyncio
+    async def test_normal_command_completes(
+        self, hg_repo_with_commits: Path
+    ) -> None:
+        """Test that normal commands complete within timeout."""
+        from hg_mcp.helpers import run_hg_command
+
+        # Normal status command should complete quickly
+        result = await run_hg_command(
+            args=["status"],
+            cwd=hg_repo_with_commits,
+            timeout=5.0,  # 5 second timeout
+        )
+
+        # Should not timeout
+        assert "timed out" not in result.lower()
