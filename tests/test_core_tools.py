@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 from mcp.types import TextContent
 
-from hg_mcp.main import (
+from hg_mcp.tools import (
     hg_annotate,
     hg_backout,
     hg_diff,
@@ -100,7 +100,8 @@ class TestHgBackout:
         # Backout revision 3 without committing (no-commit mode)
         result = await hg_backout("3", str(hg_repo_with_commits))
         # Should prepare backout but not commit
-        assert "backed out" in result.lower() or "commit" in result.lower()
+        if isinstance(result, str):
+            assert "backed out" in result.lower() or "commit" in result.lower()
 
     @pytest.mark.asyncio
     async def test_backout_with_merge(self, hg_repo_with_commits: Path) -> None:

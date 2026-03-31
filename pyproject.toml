@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "hg-mcp"
-version = "0.8.0"
+version = "0.8.1"
 description = "MCP server for Mercurial repository interaction"
 authors = ["Chaiwat Suttipongsakul <cwt@bashell.com>"]
 license = "MIT"
@@ -29,6 +29,8 @@ speed = ["uvloop", "winloop"]
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0.2"
 pytest-asyncio = "^1.3.0"
+pytest-cov = "^7.1"
+pytest-xdist = "^3.8.0"
 black = "^26.3.1"
 ruff = "^0.15.6"
 mypy = "^1.19.1"
@@ -47,7 +49,7 @@ python_functions = ["test_*"]
 # deprecated in Python 3.14+. This is a known issue upstream:
 # https://github.com/pytest-dev/pytest-asyncio/issues/713
 # The warnings are harmless and will be fixed in a future pytest-asyncio release.
-addopts = "-v --tb=short -W ignore::DeprecationWarning"
+addopts = "--tb=short -W ignore::DeprecationWarning"
 
 [tool.mypy]
 python_version = "3.10"

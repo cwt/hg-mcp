@@ -11,6 +11,7 @@ The warnings are harmless and will be fixed in a future pytest-asyncio release.
 """
 
 import subprocess
+import sys
 import tempfile
 from collections.abc import Generator
 from pathlib import Path
@@ -20,7 +21,37 @@ import pytest
 
 @pytest.fixture
 def temp_dir() -> Generator[Path, None, None]:
-    """Create a temporary directory for test repositories."""
+    """Create a temporary directory for test repositories.
+
+    On Linux, uses /dev/shm (tmpfs) for ~10-100x faster I/O operations.
+    Creates a user-specific subdirectory to prevent other users from seeing
+    test directory names on multi-user systems.
+
+    Security: Both /dev/shm and /tmp use sticky bit (1777), so file contents
+    are protected by permissions regardless of location.
+    """
+    import os
+
+    # Use tmpfs on Linux for faster test execution
+    if sys.platform.startswith("linux"):
+        tmpfs_path = Path("/dev/shm")
+        if tmpfs_path.exists():
+            # Create user-specific subdirectory for privacy
+            uid = os.getuid()
+            user_tmpfs = tmpfs_path / f"hg-mcp-tests-{uid}"
+            user_tmpfs.mkdir(mode=0o700, exist_ok=True)
+            try:
+                with tempfile.TemporaryDirectory(dir=user_tmpfs) as tmpdir:
+                    yield Path(tmpdir)
+            finally:
+                # Cleanup: remove user directory if empty
+                try:
+                    user_tmpfs.rmdir()
+                except OSError:
+                    pass  # Not empty, leave it for next run
+            return
+
+    # Fallback to default temp directory
     with tempfile.TemporaryDirectory() as tmpdir:
         yield Path(tmpdir)
 

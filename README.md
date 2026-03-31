@@ -61,7 +61,7 @@ A Model Context Protocol (MCP) server for Mercurial repository interaction, writ
 - **Optional Performance Boost**: Support for uvloop (Unix/macOS) and winloop (Windows) for enhanced performance
 - **Smart Error Handling**: Helpful error messages with hints for missing extensions
 - **Path Validation**: Automatic repository detection even when working in subdirectories
-- **Comprehensive Testing**: Full pytest test suite with isolated repository fixtures
+- **Comprehensive Testing**: Full pytest test suite with isolated repository fixtures (uses tmpfs on Linux for ~10-100x faster I/O)
 
 ## Installation
 
@@ -146,7 +146,7 @@ This starts the MCP server that can be used with MCP clients like Claude for Des
 - `hg_tags`: List all tags with JSON output
 - `hg_tag`: Create or remove a tag (like `git tag`)
 
-### Repository Inspection (New in v0.5.0)
+### Repository Inspection
 
 - `hg_annotate`: Show changeset info by line for each file (like `git blame`)
 - `hg_files`: List all tracked files in current revision
@@ -154,18 +154,18 @@ This starts the MCP server that can be used with MCP clients like Claude for Des
 - `hg_verify`: Verify repository integrity
 - `hg_identify`: Get changeset ID and branch info for working directory
 
-### Patch Management (New in v0.5.0)
+### Patch Management
 
 - `hg_export`: Export changesets as patch files
 - `hg_import`: Import ordered set of patches
 
-### Remote Operations (New in v0.5.0)
+### Remote Operations
 
 - `hg_heads`: List branch heads with JSON output
 - `hg_incoming`: Preview changesets to pull from remote
 - `hg_outgoing`: Preview changesets to push to remote
 
-### History Operations (New in v0.5.0)
+### History Operations
 
 - `hg_backout`: Reverse effect of earlier changeset (with `--no-commit` by default)
 
@@ -265,7 +265,7 @@ Configuration file location:
 
 ### Other MCP-Compatible Clients
 
-```
+```text
 Command: /path/to/your/venv/bin/hg-mcp
 ```
 

@@ -1,14 +1,15 @@
 # Development Guide for hg-mcp
 
-This document describes development conventions and best practices for the hg-mcp MCP server.
+This document describes development conventions and best practices for the
+hg-mcp MCP server.
 
 ## References
 
-- **FastMCP Documentation**: https://gofastmcp.com/
-- **FastMCP Tools Guide**: https://gofastmcp.com/servers/tools
-- **FastMCP Dependencies & Parameter Reordering**: https://gofastmcp.com/python-sdk/fastmcp-server-dependencies
-- **MCP Protocol Documentation**: https://modelcontextprotocol.info/docs/concepts/tools/
-- **FastMCP GitHub**: https://github.com/PrefectHQ/fastmcp
+- **FastMCP Documentation**: <https://gofastmcp.com/>
+- **FastMCP Tools Guide**: <https://gofastmcp.com/servers/tools>
+- **FastMCP Dependencies & Parameter Reordering**: <https://gofastmcp.com/python-sdk/fastmcp-server-dependencies>
+- **MCP Protocol Documentation**: <https://modelcontextprotocol.info/docs/concepts/tools/>
+- **FastMCP GitHub**: <https://github.com/PrefectHQ/fastmcp>
 
 ## Tool Parameter Ordering
 
@@ -20,23 +21,33 @@ This document describes development conventions and best practices for the hg-mc
 
 ### Why This Matters
 
-While FastMCP automatically reorders parameters (placing those without defaults first), this project enforces a consistent position for `repo_path` for:
+While FastMCP automatically reorders parameters (placing those without defaults
+first), this project enforces a consistent position for `repo_path` for:
 
-- **MCP client compatibility**: Ensures consistent parameter ordering across all tools
-- **Predictable schema generation**: MCP clients can rely on consistent parameter positions
-- **Code consistency**: All tools follow the same pattern, making the codebase easier to maintain
+- **MCP client compatibility**: Ensures consistent parameter ordering across all
+  tools
+- **Predictable schema generation**: MCP clients can rely on consistent
+  parameter positions
+- **Code consistency**: All tools follow the same pattern, making the codebase
+  easier to maintain
 
 ### FastMCP's Default Behavior
 
 According to the [FastMCP documentation](https://gofastmcp.com/python-sdk/fastmcp-server-dependencies):
 
-> **Note: Only POSITIONAL_OR_KEYWORD parameters are reordered (params with defaults after those without). KEYWORD_ONLY parameters keep their position since Python allows them to have defaults in any order.**
+> **Note: Only POSITIONAL_OR_KEYWORD parameters are reordered (params with
+> defaults after those without). KEYWORD_ONLY parameters keep their position
+> since Python allows them to have defaults in any order.**
 
-This means FastMCP will automatically reorder parameters, but we enforce `repo_path` position for consistency.
+This means FastMCP will automatically reorder parameters, but we enforce
+`repo_path` position for consistency.
 
 ### Reference
 
-This convention was established in **changeset 12** (`c3686dee2c7f`), which fixed parameter ordering in: `hg_revert`, `hg_branch`, `hg_rebase`, `hg_histedit`, `hg_merge`, `hg_push`, `hg_pull`, `hg_help`
+This convention was established in **changeset 12** (`c3686dee2c7f`), which
+fixed parameter ordering in: `hg_revert`, `hg_branch`, `hg_rebase`,
+                             `hg_histedit`, `hg_merge`, `hg_push`, `hg_pull`,
+                             `hg_help`
 
 ### Examples
 
@@ -138,7 +149,7 @@ async def hg_transplant(
 ### Quick Reference Table
 
 | Pattern | Order | Example |
-|---------|-------|---------|
+| ------- | ----- | ------- |
 | Only `repo_path` | `repo_path` | `hg_status(repo_path)` |
 | Required + `repo_path` | `required`, `repo_path` | `hg_add(files, repo_path)` |
 | `repo_path` + Optional | `repo_path`, `optional` | `hg_revert(repo_path, files)` |
@@ -151,12 +162,15 @@ When adding a new MCP tool:
 
 1. **Use the `@mcp.tool()` decorator**
 2. **Apply `@handle_repo_errors` decorator** for repository operations
-3. **Follow parameter ordering**: `repo_path` first, then required params, then optional params
+3. **Follow parameter ordering**: `repo_path` first, then required params, then
+   optional params
 4. **Validate `repo_path`** using `validate_repo_path(repo_path)`
 5. **Use `run_hg_command()`** to execute Mercurial commands
-6. **Add JSON output support** where appropriate (add to `JSON_SUPPORTED_COMMANDS` set)
+6. **Add JSON output support** where appropriate (add to
+   `JSON_SUPPORTED_COMMANDS` set)
 7. **Update README.md** to document the new tool
-8. **Update MCP server instructions** in `main.py` if the tool needs special usage notes
+8. **Update MCP server instructions** in `main.py` if the tool needs special
+   usage notes
 
 ## Code Quality
 
@@ -178,17 +192,47 @@ Before committing changes, always run the following scripts in order:
 
 **All linting and type checking errors must be fixed before committing.**
 
+### Running Tests
+
+**Full test suite with coverage (recommended before commits):**
+
+```bash
+./scripts/runtest.sh
+```
+
+This script:
+
+- Cleans cache and old coverage files
+- Updates dependencies
+- Runs tests in parallel (uses all CPU cores)
+- Generates coverage report with 50% threshold
+- Uses tmpfs on Linux for ~10-100x faster I/O
+
+**Quick test run (no coverage):**
+
+```bash
+pytest
+```
+
+Or for parallel execution:
+
+```bash
+pytest -n auto
+```
+
 ### Script Details
 
 | Script | Description |
-|--------|-------------|
+| ------ | ----------- |
+| `runtest.sh` | Full test suite with coverage (use before committing) |
 | `lint-check-and-fix.sh` | Runs `ruff check --fix` to lint and auto-fix issues |
 | `type-check.sh` | Runs `mypy` for static type checking |
 | `code-format.sh` | Runs `black` formatter and removes trailing whitespace |
 
 ## Testing New Tools
 
-Test new tools manually using the MCP client or by calling them directly in a Python REPL:
+Test new tools manually using the MCP client or by calling them directly in a
+Python REPL:
 
 ```python
 # Example: Test hg_tags tool
@@ -199,11 +243,30 @@ result = asyncio.run(hg_tags("."))
 print(result)
 ```
 
+### Verifying Tool Registration
+
+After adding new tools, always verify they are registered:
+
+```bash
+python -c "from hg_mcp.main import mcp; print(f'Tools registered: {len(mcp._tool_manager._tools)}')"
+```
+
+Expected: 41 tools (or more if you added new ones).
+
+### Test Performance Optimization
+
+On Linux, tests automatically use `/dev/shm` (tmpfs) for ~10-100x faster I/O:
+
+- Tests run in user-specific directories (`/dev/shm/hg-mcp-tests-{uid}/`)
+- Directory permissions: `0700` (owner-only access for security)
+- Falls back to `/tmp` if `/dev/shm` is unavailable
+- Automatic cleanup after tests complete
+
 ## Commit Messages
 
 Follow conventional commit format:
 
-```
+```text
 <type>: <description>
 
 [Optional body with more details]
@@ -212,13 +275,16 @@ Tools added/modified: <list of tools>
 ```
 
 Examples:
+
 - `feat: Add hg_tag tool for creating and removing tags`
 - `fix: Correct parameter ordering in hg_revert tool`
 - `docs: Update README with new tool documentation`
 
 ## Release Process
 
-**Important**: When tagging a new version, always update `pyproject.toml` first and commit it before creating the tag. This ensures the tag includes the correct version number.
+**Important**: When tagging a new version, always update `pyproject.toml` first
+and commit it before creating the tag. This ensures the tag includes the correct
+version number.
 
 ### Workflow
 
@@ -238,6 +304,8 @@ hg tag -m "Release vX.Y.Z" vX.Y.Z
 
 ### Why This Order Matters
 
-- The tag should point to a commit that includes the version update in `pyproject.toml`
-- This ensures that checking out a tagged version always has the correct version number in the source
+- The tag should point to a commit that includes the version update in
+  `pyproject.toml`
+- This ensures that checking out a tagged version always has the correct version
+  number in the source
 - Makes it easier to verify which version corresponds to which tag
