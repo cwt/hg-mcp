@@ -162,15 +162,15 @@ When adding a new MCP tool:
 
 1. **Use the `@mcp.tool()` decorator**
 2. **Apply `@handle_repo_errors` decorator** for repository operations
-3. **Follow parameter ordering**: `repo_path` first, then required params, then
-   optional params
-4. **Validate `repo_path`** using `validate_repo_path(repo_path)`
-5. **Use `run_hg_command()`** to execute Mercurial commands
-6. **Add JSON output support** where appropriate (add to
-   `JSON_SUPPORTED_COMMANDS` set)
-7. **Update README.md** to document the new tool
-8. **Update MCP server instructions** in `main.py` if the tool needs special
-   usage notes
+3. **Apply `@json_tool` decorator** if the tool returns JSON output (see decorator pattern in TODO.md)
+4. **Follow parameter ordering**: required params first, `repo_path` next, optional params last
+5. **Validate inputs** using `sanitize_input()` for user-provided strings (bookmark names, revisions, commit messages, file paths)
+6. **Validate `repo_path`** using `validate_repo_path(repo_path)`
+7. **Use `run_hg_command()`** to execute Mercurial commands
+8. **Add JSON output support** where appropriate (add to `JSON_SUPPORTED_COMMANDS` set)
+9. **Update README.md** to document the new tool
+10. **Update server.py instructions** if the tool needs special usage notes
+11. **Add tests** in `tests/test_new_tools.py` or create a new test file
 
 ## Code Quality
 
@@ -251,7 +251,7 @@ After adding new tools, always verify they are registered:
 python -c "from hg_mcp.main import mcp; print(f'Tools registered: {len(mcp._tool_manager._tools)}')"
 ```
 
-Expected: 41 tools (or more if you added new ones).
+Expected: 45+ tools (as of v0.8.2).
 
 ### Test Performance Optimization
 

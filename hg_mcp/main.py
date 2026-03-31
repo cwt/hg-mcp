@@ -11,10 +11,13 @@ from hg_mcp.server import mcp
 # This must happen after mcp is imported, and before mcp.run()
 from hg_mcp.tools import (  # noqa: F401
     hg_add,
+    hg_amend,
     hg_annotate,
     hg_backout,
+    hg_bookmark,
     hg_bookmarks,
     hg_branch,
+    hg_cat,
     hg_commit,
     hg_config,
     hg_diff,
@@ -37,6 +40,7 @@ from hg_mcp.tools import (  # noqa: F401
     hg_push,
     hg_rebase,
     hg_remove,
+    hg_rename,
     hg_resolve,
     hg_revert,
     hg_status,

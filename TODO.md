@@ -1,6 +1,39 @@
 # TODO - v0.8.x Development
 
-## v0.8.1 Status (Current)
+## v0.8.2 Status (Current)
+
+**Version:** v0.8.2 - Added missing tools with input sanitization
+
+### New Tools Added
+
+- [x] **hg_bookmark** - Show/create bookmarks with hg-git gexport integration
+- [x] **hg_amend** - Amend current commit with hg-git gexport integration
+- [x] **hg_cat** - Show file content at specific revision
+- [x] **hg_rename** - Rename/move files (hg mv equivalent)
+
+### Security Improvements
+
+- [x] **sanitize_input()** - New helper to prevent command injection
+- [x] **Input validation** - Applied to bookmark names, revisions, commit messages, file paths
+- [x] **Dangerous pattern detection** - Rejects shell metacharacters: `$(`, `${`, `|`, `;`, `&&`, `||`, `>`, `<`, `&`
+
+### Test Coverage Added
+
+- [x] **test_new_tools.py** - Comprehensive tests for new tools (457 lines)
+- [x] **test_branching_tools.py** - Tests for bookmark, branch, tag, push, pull
+- [x] **test_merge_helpers.py** - Tests for run_hg_command with JSON output
+- [x] **test_hggit_tools.py** - Tests for hg-git integration tools
+- [x] **test_main.py** - Basic server functionality tests
+
+### Documentation Updated
+
+- [x] **server.py** - Instructions updated with all new tools
+- [x] **README.md** - Tool list updated
+- [x] **DEVELOPMENT.md** - Reference updated
+
+---
+
+## v0.8.1 Status
 
 **Version:** v0.8.1 - Stable release with all v0.7.x lessons learned applied
 

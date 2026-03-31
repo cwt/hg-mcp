@@ -99,14 +99,18 @@ This starts the MCP server that can be used with MCP clients like Claude for Des
 - `hg_status`: Show working directory status with JSON output (like `git status`)
 - `hg_log`: Show commit history with JSON output (like `git log`)
 - `hg_diff`: Show uncommitted changes (like `git diff`)
-- `hg_commit`: Commit changes with a message (like `git commit`)
+- `hg_commit`: Commit changes with a message; auto-syncs to Git if hg-git enabled
 - `hg_add`: Add files to version control (like `git add`)
 - `hg_remove`: Remove files (like `git rm`)
+- `hg_amend`: Amend current commit; auto-syncs to Git if hg-git enabled
+- `hg_cat`: Show file content at specific revision
+- `hg_rename`: Rename/move files (like `git mv`)
 
 ### Branch & Navigation
 
 - `hg_update`: Update to a revision (like `git checkout`/`git switch`)
 - `hg_branch`: Show or create branches
+- `hg_bookmark`: Show or create bookmarks; auto-syncs to Git if hg-git enabled
 - `hg_bookmarks`: List bookmarks with JSON output (lightweight branches, like Git branches in hg-git)
 - `hg_topic`: Create a topic (lightweight branch)
 - `hg_topics`: List all topics with JSON output

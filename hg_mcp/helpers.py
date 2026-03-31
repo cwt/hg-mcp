@@ -65,6 +65,40 @@ GIT_REMOTE_PATTERNS: list[str] = [
 MAX_LOG_LIMIT = 1000
 
 
+def sanitize_input(value: str, max_length: int = 1000) -> str:
+    """Sanitize user-provided input to prevent potential command injection.
+
+    While subprocess.exec is used (safer than shell=True), this provides
+    defense-in-depth by rejecting obviously malicious input.
+
+    Args:
+        value: The input string to sanitize
+        max_length: Maximum allowed length (default 1000)
+
+    Returns:
+        The sanitized string
+
+    Raises:
+        ValueError: If input contains dangerous patterns or exceeds max length
+    """
+    if not value:
+        return value
+
+    if len(value) > max_length:
+        raise ValueError(f"Input exceeds maximum length of {max_length}")
+
+    # Check for shell metacharacters that could be dangerous
+    # Even though we use subprocess.exec, this is defense-in-depth
+    dangerous_patterns = ["`", "$(", "${", "|", ";", "&&", "||", ">", "<", "&"]
+    for pattern in dangerous_patterns:
+        if pattern in value:
+            raise ValueError(
+                f"Input contains invalid character sequence: {pattern}"
+            )
+
+    return value
+
+
 def setup_event_loop() -> None:
     """Set up uvloop (Unix) or winloop (Windows) for better performance if available."""
     if __name__ == "__main__":

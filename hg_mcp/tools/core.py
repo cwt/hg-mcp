@@ -12,6 +12,7 @@ from hg_mcp.helpers import (
     _is_hggit_enabled,
     parse_list_param,
     run_hg_command,
+    sanitize_input,
     validate_repo_path,
 )
 from hg_mcp.server import mcp
@@ -188,4 +189,136 @@ async def hg_revert(
         args.extend(files_list)
     else:
         args.append("--all")
+    return await run_hg_command(args, cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_amend(
+    message: str | None = None,
+    repo_path: str = ".",
+) -> str:
+    """Amend the current commit.
+
+    Equivalent to modifying the most recent commit. Requires the 'evolve'
+    extension for full functionality (automatic phase management).
+
+    **Note:** This updates the current parent commit with any uncommitted
+    changes. The original commit is replaced with a new one.
+
+    **hg-git:** After amending in a Git-backed repo, this tool will
+    automatically run `hg gexport` to sync bookmarks to Git branches.
+
+    Args:
+        message: New commit message (optional, keeps original if not provided)
+        repo_path: The repository path
+
+    Examples:
+        - hg_amend() -> Amend with original message
+        - hg_amend(message="fix typo") -> Amend with new message
+    """
+    path = validate_repo_path(repo_path)
+    args = ["commit", "--amend"]
+
+    if message:
+        # Sanitize commit message
+        try:
+            safe_message = sanitize_input(message, max_length=10000)
+        except ValueError as e:
+            return f"Error: Invalid commit message - {e}"
+        args.extend(["-m", safe_message])
+    else:
+        args.append("--no-edit")
+
+    result = await run_hg_command(args, cwd=path)
+
+    # If amend succeeded, check if hg-git is enabled and sync bookmarks
+    if not result.startswith("Error:"):
+        try:
+            if await _is_hggit_enabled(path):
+                is_git_backed, _ = await _check_git_remotes(path)
+                if is_git_backed:
+                    export_result = await run_hg_command(["gexport"], cwd=path)
+                    if not export_result.startswith("Error:"):
+                        result += (
+                            "\n\n✓ hg-git: Bookmarks exported to Git branches"
+                        )
+                    else:
+                        result += (
+                            f"\n\nNote: hg gexport skipped - {export_result}"
+                        )
+        except Exception as e:
+            result += f"\n\nNote: hg-git integration check failed: {e}"
+
+    return result
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_rename(
+    src: str,
+    dst: str,
+    repo_path: str = ".",
+) -> str:
+    """Rename/move files.
+
+    Equivalent to 'git mv'. Tracks file renames in history.
+
+    Args:
+        src: Source file path
+        dst: Destination file path
+        repo_path: The repository path
+
+    Examples:
+        - hg_rename(src="old.txt", dst="new.txt") -> Rename file
+    """
+    path = validate_repo_path(repo_path)
+    # Sanitize file paths
+    try:
+        safe_src = sanitize_input(src, max_length=500)
+        safe_dst = sanitize_input(dst, max_length=500)
+    except ValueError as e:
+        return f"Error: Invalid file path - {e}"
+    return await run_hg_command(["rename", safe_src, safe_dst], cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_cat(
+    file: str,
+    repo_path: str = ".",
+    revision: str = "",
+) -> str:
+    """Show file content at a specific revision.
+
+    Equivalent to 'git show' or 'hg cat'. Displays the contents of a file
+    as it existed at the specified revision.
+
+    Args:
+        file: Path to the file to display
+        repo_path: The repository path
+        revision: Revision to show (defaults to working directory parent)
+
+    Examples:
+        - hg_cat(file="README.md") -> Show file at current parent
+        - hg_cat(file="README.md", revision="v1.0") -> Show file at tag v1.0
+    """
+    path = validate_repo_path(repo_path)
+    args = ["cat"]
+
+    if revision:
+        # Sanitize revision string
+        try:
+            safe_revision = sanitize_input(revision, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid revision - {e}"
+        args.extend(["-r", safe_revision])
+
+    # Sanitize file path
+    try:
+        safe_file = sanitize_input(file, max_length=500)
+    except ValueError as e:
+        return f"Error: Invalid file path - {e}"
+    args.append(safe_file)
+
     return await run_hg_command(args, cwd=path)

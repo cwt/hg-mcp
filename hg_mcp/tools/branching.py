@@ -6,7 +6,13 @@ Provides tools for working with bookmarks, topics, branches, and tags.
 from mcp.types import TextContent
 
 from hg_mcp.decorators import handle_repo_errors, json_tool
-from hg_mcp.helpers import run_hg_command, validate_repo_path
+from hg_mcp.helpers import (
+    _check_git_remotes,
+    _is_hggit_enabled,
+    run_hg_command,
+    sanitize_input,
+    validate_repo_path,
+)
 from hg_mcp.server import mcp
 
 
@@ -21,6 +27,73 @@ async def hg_bookmarks(repo_path: str = ".") -> list[TextContent]:
     """
     path = validate_repo_path(repo_path)
     return await run_hg_command(["bookmarks"], cwd=path)  # type: ignore[return-value]
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_bookmark(
+    repo_path: str = ".",
+    name: str | None = None,
+    revision: str = "",
+) -> str:
+    """Show or create a bookmark.
+
+    Bookmarks are lightweight pointers to revisions (like Git branches).
+    Unlike Mercurial branches, bookmarks can be moved and deleted.
+
+    **hg-git:** After creating a bookmark in a Git-backed repo, this tool will
+    automatically run `hg gexport` to sync bookmarks to Git branches.
+
+    Args:
+        repo_path: The repository path
+        name: Name of bookmark to create (optional, shows current if omitted)
+        revision: Revision to point bookmark to (defaults to current parent)
+
+    Examples:
+        - hg_bookmark() -> Show current bookmark
+        - hg_bookmark(name="feature") -> Create bookmark "feature"
+        - hg_bookmark(name="feature", revision="tip") -> Create at tip
+    """
+    path = validate_repo_path(repo_path)
+
+    if name:
+        # Sanitize bookmark name
+        try:
+            safe_name = sanitize_input(name, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid bookmark name - {e}"
+
+        args = ["bookmark", safe_name]
+
+        if revision:
+            # Sanitize revision string
+            try:
+                safe_revision = sanitize_input(revision, max_length=200)
+            except ValueError as e:
+                return f"Error: Invalid revision - {e}"
+            args.extend(["-r", safe_revision])
+
+        result = await run_hg_command(args, cwd=path)
+
+        # If bookmark creation succeeded, check if hg-git is enabled and sync
+        if not result.startswith("Error:"):
+            try:
+                if await _is_hggit_enabled(path):
+                    is_git_backed, _ = await _check_git_remotes(path)
+                    if is_git_backed:
+                        export_result = await run_hg_command(
+                            ["gexport"], cwd=path
+                        )
+                        if not export_result.startswith("Error:"):
+                            result += "\n\n✓ hg-git: Bookmarks exported to Git branches"
+                        else:
+                            result += f"\n\nNote: hg gexport skipped - {export_result}"
+            except Exception as e:
+                result += f"\n\nNote: hg-git integration check failed: {e}"
+
+        return result
+
+    return await run_hg_command(["bookmark"], cwd=path)
 
 
 @mcp.tool()

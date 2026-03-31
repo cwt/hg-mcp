@@ -9,6 +9,7 @@ from hg_mcp.server import mcp  # noqa: F401
 # Import all tools to register them with the MCP server
 # Tools are automatically registered when their modules are imported
 from hg_mcp.tools.branching import (
+    hg_bookmark,
     hg_bookmarks,
     hg_branch,
     hg_config,
@@ -24,10 +25,13 @@ from hg_mcp.tools.branching import (
 )
 from hg_mcp.tools.core import (
     hg_add,
+    hg_amend,
+    hg_cat,
     hg_commit,
     hg_diff,
     hg_log,
     hg_remove,
+    hg_rename,
     hg_revert,
     hg_status,
     hg_update,
@@ -50,6 +54,7 @@ from hg_mcp.tools.history import (
     hg_identify,
     hg_import,
     hg_incoming,
+    hg_largefiles,
     hg_outgoing,
     hg_summary,
     hg_verify,
@@ -59,7 +64,9 @@ from hg_mcp.tools.merge import hg_merge, hg_resolve
 __all__ = [
     # Core tools
     "hg_add",
+    "hg_amend",
     "hg_backout",
+    "hg_cat",
     "hg_commit",
     "hg_config",
     "hg_diff",
@@ -70,10 +77,12 @@ __all__ = [
     "hg_histedit",
     "hg_import",
     "hg_incoming",
+    "hg_largefiles",
     "hg_log",
     "hg_outgoing",
     "hg_remove",
     "hg_rebase",
+    "hg_rename",
     "hg_revert",
     "hg_status",
     "hg_summary",
@@ -92,12 +101,15 @@ __all__ = [
     "hg_histedit",
     "hg_import",
     "hg_incoming",
+    "hg_largefiles",
     "hg_outgoing",
     "hg_heads",
     "hg_verify",
     "hg_identify",
+    "hg_cat",
     # Branching tools
     "hg_branch",
+    "hg_bookmark",
     "hg_bookmarks",
     "hg_config",
     "hg_extensions",
@@ -114,4 +126,8 @@ __all__ = [
     "hg_resolve",
     # hg-git tool
     "hg_git",
+    # File operations
+    "hg_rename",
+    # Amend tool
+    "hg_amend",
 ]

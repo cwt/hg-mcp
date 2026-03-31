@@ -24,8 +24,9 @@ mcp: FastMCP = FastMCP(
 - The suffix is configured via `branch_bookmark_suffix` in Mercurial config
   (default: `.git`).
 - Use `hg_git` to detect the current suffix setting and verify bookmark mapping.
-- The `hg_commit` tool automatically runs `hg gexport` after committing in
-  Git-backed repos to sync bookmarks to Git branches.
+- The `hg_commit`, `hg_bookmark`, and `hg_amend` tools automatically run
+  `hg gexport` after operations in Git-backed repos to sync bookmarks to Git
+  branches.
 
 **Safety**
 - Confirm before: strip, rebase -D, force evolve, public changeset rewrites
@@ -49,9 +50,13 @@ mcp: FastMCP = FastMCP(
 - `hg_add` / `hg_remove`: Add/remove files from version control
 - `hg_update`: Switch to revision/bookmark/branch (like `git checkout`)
 - `hg_revert`: Discard uncommitted changes
+- `hg_amend`: Amend current commit; auto-syncs to Git if hg-git enabled
+- `hg_cat`: Show file content at specific revision
+- `hg_rename`: Rename/move files (like `git mv`)
 
 **Branching & Remotes**
 - `hg_branch`: Show/create branches
+- `hg_bookmark`: Show/create bookmarks; auto-syncs to Git if hg-git enabled
 - `hg_bookmarks`: List bookmarks (JSON, lightweight pointers)
 - `hg_topic` / `hg_topics` / `hg_topic_current`: Topic management
 - `hg_push` / `hg_pull`: Sync with remotes
