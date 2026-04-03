@@ -76,7 +76,7 @@ async def hg_bookmark(
         result = await run_hg_command(args, cwd=path)
 
         # If bookmark creation succeeded, check if hg-git is enabled and sync
-        if not result.startswith("Error:"):
+        if not result.startswith("Error"):
             try:
                 if await _is_hggit_enabled(path):
                     is_git_backed, _ = await _check_git_remotes(path)
@@ -84,7 +84,7 @@ async def hg_bookmark(
                         export_result = await run_hg_command(
                             ["gexport"], cwd=path
                         )
-                        if not export_result.startswith("Error:"):
+                        if not export_result.startswith("Error"):
                             result += "\n\n✓ hg-git: Bookmarks exported to Git branches"
                         else:
                             result += f"\n\nNote: hg gexport skipped - {export_result}"
@@ -108,7 +108,11 @@ async def hg_branch(repo_path: str = ".", name: str | None = None) -> str:
     """
     path = validate_repo_path(repo_path)
     if name:
-        return await run_hg_command(["branch", name], cwd=path)
+        try:
+            safe_name = sanitize_input(name, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid branch name - {e}"
+        return await run_hg_command(["branch", safe_name], cwd=path)
     return await run_hg_command(["branch"], cwd=path)
 
 
@@ -144,16 +148,27 @@ async def hg_tag(
         remove: If True, remove the tag instead of creating it
     """
     path = validate_repo_path(repo_path)
+
+    # Sanitize tag name
+    try:
+        safe_name = sanitize_input(name, max_length=200)
+    except ValueError as e:
+        return f"Error: Invalid tag name - {e}"
+
     args = ["tag"]
 
     if remove:
         args.append("--remove")
 
-    args.extend(["-m", f"Add tag {name}"])
-    args.append(name)
+    args.extend(["-m", f"Add tag {safe_name}"])
+    args.append(safe_name)
 
     if revision:
-        args.extend(["-r", revision])
+        try:
+            safe_revision = sanitize_input(revision, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid revision - {e}"
+        args.extend(["-r", safe_revision])
 
     return await run_hg_command(args, cwd=path)
 
@@ -176,9 +191,9 @@ async def hg_push(
     result = await run_hg_command(args, cwd=path)
 
     # Add helpful hint if destination doesn't exist
-    if result.startswith("Error:") and "does not exist" in result:
+    if result.startswith("Error") and "does not exist" in result:
         paths_output = await run_hg_command(["paths"], cwd=path)
-        if not paths_output.startswith("Error:") and paths_output:
+        if not paths_output.startswith("Error") and paths_output:
             result += f"\n\nAvailable remotes:\n{paths_output}"
 
     return result

@@ -30,7 +30,7 @@ def json_tool(
 
         # If result is an error (str type), return as plain text in TextContent
         # (users should see errors)
-        if isinstance(result, str) and result.startswith("Error:"):
+        if isinstance(result, str) and result.startswith("Error"):
             return [
                 TextContent(
                     type="text",

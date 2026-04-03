@@ -10,6 +10,7 @@ from hg_mcp.helpers import (
     GIT_REMOTE_PATTERNS,
     parse_list_param,
     run_hg_command,
+    sanitize_input,
     validate_repo_path,
 )
 from hg_mcp.server import mcp
@@ -194,9 +195,17 @@ async def hg_rebase(
     path = validate_repo_path(repo_path)
     args = ["rebase"]
     if source:
-        args.extend(["-s", source])
+        try:
+            safe_source = sanitize_input(source, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid source - {e}"
+        args.extend(["-s", safe_source])
     if dest:
-        args.extend(["-d", dest])
+        try:
+            safe_dest = sanitize_input(dest, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid destination - {e}"
+        args.extend(["-d", safe_dest])
     if collapse:
         args.append("--collapse")
     if keep:
@@ -218,28 +227,47 @@ async def hg_strip(
     **Warning:** Permanently deletes changesets. Use with caution on public history.
     """
     path = validate_repo_path(repo_path)
+
+    # Sanitize revision
+    try:
+        safe_revision = sanitize_input(revision, max_length=200)
+    except ValueError as e:
+        return f"Error: Invalid revision - {e}"
+
     args = ["strip"]
     if keep:
         args.append("--keep")
-    args.append(revision)
+    args.append(safe_revision)
     return await run_hg_command(args, cwd=path)
 
 
 @mcp.tool()
 @handle_repo_errors
 async def hg_transplant(
-    revisions: list[str] | str,
     repo_path: str = ".",
+    revisions: list[str] | str | None = None,
     source: str = "",
 ) -> str:
-    """Cherry-pick changesets using the transplant extension."""
+    """Cherry-pick changesets using the transplant extension.
+
+    If no revisions specified with --source, starts interactive mode.
+    Use --source/-s to specify another repository to transplant from.
+    """
     path = validate_repo_path(repo_path)
     args = ["transplant"]
     if source:
-        args.extend(["--source", source])
+        try:
+            safe_source = sanitize_input(source, max_length=500)
+        except ValueError as e:
+            return f"Error: Invalid source - {e}"
+        args.extend(["--source", safe_source])
     revisions_list = parse_list_param(revisions)
     for rev in revisions_list:
-        args.extend(["-r", rev])
+        try:
+            safe_rev = sanitize_input(rev, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid revision - {e}"
+        args.extend(["-r", safe_rev])
     return await run_hg_command(args, cwd=path)
 
 

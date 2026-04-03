@@ -389,6 +389,32 @@ class TestHgTransplant:
         assert "transplant" in result.lower()
 
     @pytest.mark.asyncio
+    async def test_transplant_without_revisions(
+        self, hg_repo_with_extensions: Path
+    ) -> None:
+        """Test transplant without revisions parameter.
+
+        This is the bug fix: revisions should be optional.
+        When called without revisions, it may start interactive mode
+        or return an appropriate message.
+        """
+        # Call without revisions - should not raise a validation error
+        result = await hg_transplant(repo_path=str(hg_repo_with_extensions))
+        assert isinstance(result, str)
+
+    @pytest.mark.asyncio
+    async def test_transplant_with_source_no_revisions(
+        self, hg_repo_with_extensions: Path
+    ) -> None:
+        """Test transplant with source but without explicit revisions."""
+        # This is a valid use case: transplant from source interactively
+        result = await hg_transplant(
+            repo_path=str(hg_repo_with_extensions),
+            source="default",
+        )
+        assert isinstance(result, str)
+
+    @pytest.mark.asyncio
     async def test_transplant_with_extension(
         self, hg_repo_with_extensions: Path
     ) -> None:

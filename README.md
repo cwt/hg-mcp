@@ -8,6 +8,7 @@ A Model Context Protocol (MCP) server for Mercurial repository interaction, writ
 
 ### Core Version Control Operations
 
+- **Initialization**: Create a new Mercurial repository (equivalent to `git init`)
 - **Status & Diff**: View working directory status and uncommitted changes (equivalent to `git status` and `git diff`)
 - **Commit Management**: Add files, commit changes with messages, and remove files from version control
 - **History Navigation**: View commit history with configurable limits, update to any revision (like `git checkout`/`git switch`)
@@ -96,6 +97,7 @@ This starts the MCP server that can be used with MCP clients like Claude for Des
 
 ### Core Commands
 
+- `hg_init`: Create a new Mercurial repository (like `git init`)
 - `hg_status`: Show working directory status with JSON output (like `git status`)
 - `hg_log`: Show commit history with JSON output (like `git log`)
 - `hg_diff`: Show uncommitted changes (like `git diff`)

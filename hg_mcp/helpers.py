@@ -101,23 +101,22 @@ def sanitize_input(value: str, max_length: int = 1000) -> str:
 
 def setup_event_loop() -> None:
     """Set up uvloop (Unix) or winloop (Windows) for better performance if available."""
-    if __name__ == "__main__":
-        import sys
+    import sys
 
-        if sys.platform == "win32":
-            try:
-                import winloop
+    if sys.platform == "win32":
+        try:
+            import winloop
 
-                winloop.install()
-            except ImportError:
-                pass
-        else:
-            try:
-                import uvloop
+            winloop.install()
+        except ImportError:
+            pass
+    else:
+        try:
+            import uvloop
 
-                uvloop.install()
-            except ImportError:
-                pass
+            uvloop.install()
+        except ImportError:
+            pass
 
 
 def format_bytes(size: int) -> str:
@@ -132,6 +131,41 @@ def format_bytes(size: int) -> str:
     return f"{current_size:.2f} PB"
 
 
+def validate_path(repo_path: str, create_if_missing: bool = False) -> Path:
+    """Validate that repo_path is a safe directory path.
+
+    Args:
+        repo_path: The path to validate.
+        create_if_missing: If True, create the directory if it doesn't exist.
+
+    Returns:
+        The resolved absolute Path object.
+
+    Raises:
+        ValueError: If the path is invalid or is not a directory.
+    """
+    try:
+        # Handle empty or default path
+        p_str = repo_path.strip() if repo_path and repo_path.strip() else "."
+        path = Path(p_str).absolute()
+    except Exception as e:
+        raise ValueError(f"Invalid path format: {e}") from e
+
+    if not path.exists():
+        if create_if_missing:
+            try:
+                path.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                raise ValueError(f"Failed to create directory {path}: {e}")
+        else:
+            raise ValueError(f"Path does not exist: {path}")
+
+    if not path.is_dir():
+        raise ValueError(f"Path is not a directory: {path}")
+
+    return path
+
+
 def validate_repo_path(repo_path: str) -> Path:
     """Validate that repo_path is a safe, existing Mercurial repository.
 
@@ -144,18 +178,7 @@ def validate_repo_path(repo_path: str) -> Path:
     Raises:
         ValueError: If the path is invalid, does not exist, or is not a repo.
     """
-    try:
-        # Handle empty or default path
-        p_str = repo_path.strip() if repo_path and repo_path.strip() else "."
-        path = Path(p_str).absolute()
-    except Exception as e:
-        raise ValueError(f"Invalid path format: {e}") from e
-
-    if not path.exists():
-        raise ValueError(f"Path does not exist: {path}")
-
-    if not path.is_dir():
-        raise ValueError(f"Path is not a directory: {path}")
+    path = validate_path(repo_path)
 
     # Check for .hg directory in current or parent directories
     current = path

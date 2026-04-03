@@ -12,6 +12,7 @@ from hg_mcp.helpers import (
     format_bytes,
     parse_list_param,
     run_hg_command,
+    sanitize_input,
     validate_repo_path,
 )
 from hg_mcp.server import mcp
@@ -62,18 +63,29 @@ async def hg_backout(
         message: Commit message (required if merge=True, ignored otherwise)
     """
     path = validate_repo_path(repo_path)
+
+    # Sanitize revision
+    try:
+        safe_revision = sanitize_input(revision, max_length=200)
+    except ValueError as e:
+        return f"Error: Invalid revision - {e}"
+
     args = ["backout"]
     if merge:
         args.append("--merge")
         if message:
-            args.extend(["-m", message])
+            try:
+                safe_message = sanitize_input(message, max_length=10000)
+            except ValueError as e:
+                return f"Error: Invalid commit message - {e}"
+            args.extend(["-m", safe_message])
         else:
             # Default message to avoid interactive editor
-            args.extend(["-m", f"Backed out changeset {revision}"])
+            args.extend(["-m", f"Backed out changeset {safe_revision}"])
     else:
         # Don't commit, just prepare the backout
         args.append("--no-commit")
-    args.append(revision)
+    args.append(safe_revision)
     return await run_hg_command(args, cwd=path)
 
 
@@ -107,8 +119,8 @@ async def hg_export(
 @mcp.tool()
 @handle_repo_errors
 async def hg_import(
+    patches: list[str] | str,
     repo_path: str = ".",
-    patches: list[str] | str | None = None,
     no_commit: bool = False,
 ) -> str:
     """Import an ordered set of patches.
@@ -117,8 +129,8 @@ async def hg_import(
     automatically if the patch includes proper header information.
 
     Args:
-        repo_path: The repository path
         patches: List of patch file paths to import
+        repo_path: The repository path
         no_commit: If True, only apply patches without committing
     """
     path = validate_repo_path(repo_path)
@@ -126,8 +138,7 @@ async def hg_import(
     if no_commit:
         args.append("--no-commit")
     patches_list = parse_list_param(patches)
-    if patches_list:
-        args.extend(patches_list)
+    args.extend(patches_list)
     return await run_hg_command(args, cwd=path)
 
 

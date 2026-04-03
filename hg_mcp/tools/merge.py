@@ -6,7 +6,7 @@ Provides tools for merging revisions and managing merge conflicts.
 from mcp.types import TextContent
 
 from hg_mcp.decorators import handle_repo_errors, json_tool
-from hg_mcp.helpers import run_hg_command, validate_repo_path
+from hg_mcp.helpers import run_hg_command, sanitize_input, validate_repo_path
 from hg_mcp.server import mcp
 
 
@@ -22,7 +22,11 @@ async def hg_merge(repo_path: str = ".", revision: str = "") -> str:
     path = validate_repo_path(repo_path)
     args = ["merge"]
     if revision:
-        args.append(revision)
+        try:
+            safe_revision = sanitize_input(revision, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid revision - {e}"
+        args.append(safe_revision)
     return await run_hg_command(args, cwd=path)
 
 

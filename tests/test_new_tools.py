@@ -418,6 +418,75 @@ class TestHgRename:
         assert "Error" in result or "abort" in result.lower()
 
 
+class TestHgAdd:
+    """Tests for hg_add tool."""
+
+    @pytest.mark.asyncio
+    async def test_add_without_files(self, hg_repo: Path) -> None:
+        """Test adding all untracked files without specifying files.
+
+        This is the bug fix: files should be optional, hg add adds all files.
+        """
+        # Create new untracked files
+        (hg_repo / "file1.txt").write_text("content1\n", encoding="utf-8")
+        (hg_repo / "file2.txt").write_text("content2\n", encoding="utf-8")
+
+        # Call hg_add without files parameter
+        result = await hg_add(repo_path=str(hg_repo))
+        assert isinstance(result, str)
+
+        # Verify files are now tracked
+        status = await hg_status(repo_path=str(hg_repo))
+        status_text = _extract_text(status)
+        # Files should not appear as untracked (?) after adding
+        # Status output is JSON, check normalized form
+        normalized = status_text.replace(" ", "")
+        assert '"path":"file1.txt","status":"?"' not in normalized
+        assert '"path":"file2.txt","status":"?"' not in normalized
+
+    @pytest.mark.asyncio
+    async def test_add_with_files_list(self, hg_repo: Path) -> None:
+        """Test adding specific files as a list."""
+        (hg_repo / "a.txt").write_text("a\n", encoding="utf-8")
+        (hg_repo / "b.txt").write_text("b\n", encoding="utf-8")
+
+        result = await hg_add(files=["a.txt"], repo_path=str(hg_repo))
+        assert isinstance(result, str)
+
+        # Only a.txt should be tracked, b.txt should still be untracked
+        status = await hg_status(repo_path=str(hg_repo))
+        status_text = _extract_text(status)
+        # Status is JSON, check that b.txt has status "?" (untracked)
+        assert '"path":"b.txt","status":"?"' in status_text.replace(" ", "")
+
+    @pytest.mark.asyncio
+    async def test_add_with_files_string(self, hg_repo: Path) -> None:
+        """Test adding specific files as a single string."""
+        (hg_repo / "single.txt").write_text("single\n", encoding="utf-8")
+
+        result = await hg_add(files="single.txt", repo_path=str(hg_repo))
+        assert isinstance(result, str)
+
+    @pytest.mark.asyncio
+    async def test_add_empty_files_list(self, hg_repo: Path) -> None:
+        """Test adding with empty files list (should add all untracked)."""
+        (hg_repo / "untracked.txt").write_text("content\n", encoding="utf-8")
+
+        result = await hg_add(files=[], repo_path=str(hg_repo))
+        assert isinstance(result, str)
+
+    @pytest.mark.asyncio
+    async def test_add_already_tracked_file(self, hg_repo: Path) -> None:
+        """Test adding a file that is already tracked (no-op)."""
+        test_file = hg_repo / "tracked.txt"
+        test_file.write_text("content\n", encoding="utf-8")
+        await hg_add(files=["tracked.txt"], repo_path=str(hg_repo))
+
+        # Adding again should succeed silently
+        result = await hg_add(files=["tracked.txt"], repo_path=str(hg_repo))
+        assert isinstance(result, str)
+
+
 class TestRunHgCommand:
     """Tests for run_hg_command helper function."""
 

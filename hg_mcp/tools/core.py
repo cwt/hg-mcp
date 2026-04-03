@@ -13,9 +13,22 @@ from hg_mcp.helpers import (
     parse_list_param,
     run_hg_command,
     sanitize_input,
+    validate_path,
     validate_repo_path,
 )
 from hg_mcp.server import mcp
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_init(repo_path: str = ".") -> str:
+    """Create a new Mercurial repository in the specified directory.
+
+    Equivalent to 'git init'.
+    """
+    # Use validate_path instead of validate_repo_path because .hg doesn't exist yet
+    path = validate_path(repo_path, create_if_missing=True)
+    return await run_hg_command(["init"], cwd=path)
 
 
 @mcp.tool()
@@ -82,7 +95,11 @@ async def hg_diff(repo_path: str = ".", revisions: str = "") -> str:
     path = validate_repo_path(repo_path)
     args = ["diff"]
     if revisions:
-        args.extend(["-r", revisions])
+        try:
+            safe_revisions = sanitize_input(revisions, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid revision spec - {e}"
+        args.extend(["-r", safe_revisions])
     return await run_hg_command(args, cwd=path)
 
 
@@ -114,7 +131,7 @@ async def hg_commit(
     result = await run_hg_command(args, cwd=path)
 
     # If commit succeeded, check if hg-git is enabled and sync bookmarks
-    if not result.startswith("Error:"):
+    if not result.startswith("Error"):
         # Check if hg-git is enabled
         if await _is_hggit_enabled(path):
             # Check if repo is Git-backed
@@ -122,7 +139,7 @@ async def hg_commit(
             if is_git_backed:
                 # Run hg gexport to sync Mercurial bookmarks to Git branches
                 export_result = await run_hg_command(["gexport"], cwd=path)
-                if not export_result.startswith("Error:"):
+                if not export_result.startswith("Error"):
                     result += "\n\n✓ hg-git: Bookmarks exported to Git branches"
                 else:
                     result += f"\n\nNote: hg gexport skipped - {export_result}"
@@ -132,19 +149,26 @@ async def hg_commit(
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_add(files: list[str] | str, repo_path: str = ".") -> str:
+async def hg_add(
+    repo_path: str = ".",
+    files: list[str] | str | None = None,
+) -> str:
     """Add files to version control.
 
     Equivalent to 'git add'. Schedules new or modified files for commit.
+    If no files specified, adds all untracked files.
     """
     path = validate_repo_path(repo_path)
-    files_list = parse_list_param(files)
+    files_list = parse_list_param(files) if files else []
     return await run_hg_command(["add"] + files_list, cwd=path)
 
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_remove(files: list[str] | str, repo_path: str = ".") -> str:
+async def hg_remove(
+    files: list[str] | str,
+    repo_path: str = ".",
+) -> str:
     """Remove files from version control.
 
     Equivalent to 'git rm'. Schedules files for removal from the repository.
@@ -156,10 +180,16 @@ async def hg_remove(files: list[str] | str, repo_path: str = ".") -> str:
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_update(revision: str, repo_path: str = ".") -> str:
+async def hg_update(
+    repo_path: str = ".",
+    revision: str = "",
+) -> str:
     """Update to a specific revision.
 
     Equivalent to 'git checkout' or 'git switch'.
+
+    If no revision specified, updates to the tip of the current named branch
+    and moves the active bookmark.
 
     **Important:** Mercurial does NOT use 'HEAD' like Git. Use these instead:
     - `.` (dot) - Current parent revision
@@ -169,7 +199,9 @@ async def hg_update(revision: str, repo_path: str = ".") -> str:
     - Bookmark name (e.g., "main", "feature-xyz")
     """
     path = validate_repo_path(repo_path)
-    return await run_hg_command(["update", revision], cwd=path)
+    if revision:
+        return await run_hg_command(["update", "-r", revision], cwd=path)
+    return await run_hg_command(["update"], cwd=path)
 
 
 @mcp.tool()
@@ -233,13 +265,13 @@ async def hg_amend(
     result = await run_hg_command(args, cwd=path)
 
     # If amend succeeded, check if hg-git is enabled and sync bookmarks
-    if not result.startswith("Error:"):
+    if not result.startswith("Error"):
         try:
             if await _is_hggit_enabled(path):
                 is_git_backed, _ = await _check_git_remotes(path)
                 if is_git_backed:
                     export_result = await run_hg_command(["gexport"], cwd=path)
-                    if not export_result.startswith("Error:"):
+                    if not export_result.startswith("Error"):
                         result += (
                             "\n\n✓ hg-git: Bookmarks exported to Git branches"
                         )

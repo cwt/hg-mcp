@@ -23,6 +23,7 @@ from hg_mcp.tools import (
     hg_identify,
     hg_import,
     hg_incoming,
+    hg_init,
     hg_outgoing,
     hg_summary,
     hg_verify,
@@ -164,7 +165,7 @@ class TestHgImport:
 
         # Import it back
         result = await hg_import(
-            str(hg_repo_with_commits), patches=[str(patch_file)]
+            patches=[str(patch_file)], repo_path=str(hg_repo_with_commits)
         )
         assert result  # Should complete without error
 
@@ -186,7 +187,9 @@ class TestHgImport:
         )
 
         result = await hg_import(
-            str(hg_repo_with_commits), patches=[str(patch_file)], no_commit=True
+            patches=[str(patch_file)],
+            repo_path=str(hg_repo_with_commits),
+            no_commit=True,
         )
         assert result  # Should apply without committing
 
@@ -478,3 +481,26 @@ class TestHgDiff:
         result = await hg_diff(str(hg_repo_with_commits), revisions="1")
         text = _extract_text(result)
         assert text
+
+
+class TestHgInit:
+    """Tests for hg_init tool."""
+
+    @pytest.mark.asyncio
+    async def test_init_existing_dir(self, temp_dir: Path) -> None:
+        """Test initializing a repo in an existing empty directory."""
+        repo_path = temp_dir / "new_repo"
+        repo_path.mkdir()
+
+        result = await hg_init(str(repo_path))
+        assert result == ""  # hg init is silent on success
+        assert (repo_path / ".hg").is_dir()
+
+    @pytest.mark.asyncio
+    async def test_init_new_dir(self, temp_dir: Path) -> None:
+        """Test initializing a repo in a non-existent directory."""
+        repo_path = temp_dir / "nested" / "repo"
+
+        result = await hg_init(str(repo_path))
+        assert result == ""
+        assert (repo_path / ".hg").is_dir()

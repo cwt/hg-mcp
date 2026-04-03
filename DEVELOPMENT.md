@@ -89,9 +89,10 @@ async def hg_status(repo_path: str = ".") -> str:
 @mcp.tool()
 @handle_repo_errors
 async def hg_add(
-    files: List[str],          # 1. Required param (no default) comes FIRST
-    repo_path: str = ".",      # 2. repo_path after required params
+    repo_path: str = ".",      # 1. repo_path first (only param with default)
+    files: List[str] | None = None,  # 2. Optional params last
 ) -> str:
+    # hg add without files adds all untracked files
     # ...
 ```
 
@@ -151,10 +152,10 @@ async def hg_transplant(
 | Pattern | Order | Example |
 | ------- | ----- | ------- |
 | Only `repo_path` | `repo_path` | `hg_status(repo_path)` |
-| Required + `repo_path` | `required`, `repo_path` | `hg_add(files, repo_path)` |
+| Required + `repo_path` | `required`, `repo_path` | `hg_tag(name, repo_path)` |
 | `repo_path` + Optional | `repo_path`, `optional` | `hg_revert(repo_path, files)` |
 | Required + `repo_path` + Optional | `required`, `repo_path`, `optional` | `hg_commit(message, repo_path, files)` |
-| Required + `repo_path` + Multiple Optional | `required`, `repo_path`, `optional...` | `hg_tag(name, repo_path, revision, remove)` |
+| Required + `repo_path` + Multiple Optional | `required`, `repo_path`, `optional...` | `hg_strip(revision, repo_path, keep)` |
 
 ## Adding New Tools
 
