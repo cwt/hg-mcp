@@ -228,7 +228,10 @@ def _get_extension_hint(error_text: str, command_args: list[str]) -> str:
 
 
 async def run_hg_command(
-    args: list[str], cwd: Path | None = None, use_json: bool = True
+    args: list[str],
+    cwd: Path | None = None,
+    use_json: bool = True,
+    env: dict[str, str] | None = None,
 ) -> str:
     """Run an hg command asynchronously and return its output.
 
@@ -236,6 +239,7 @@ async def run_hg_command(
         args: Command arguments (e.g., ["status", "-T", "json"])
         cwd: Working directory
         use_json: If True and command supports it, automatically add -T json flag
+        env: Optional environment variables to pass to the command
     """
     if not args:
         return "Error: No command provided."
@@ -253,12 +257,20 @@ async def run_hg_command(
         cmd_args = args
 
     try:
+        import os as os_module
+
+        # Merge provided env with system environment
+        process_env = os_module.environ.copy()
+        if env:
+            process_env.update(env)
+
         process = await asyncio.create_subprocess_exec(
             "hg",
             *cmd_args,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             cwd=cwd,
+            env=process_env,
         )
         stdout, stderr = await process.communicate()
 

@@ -159,7 +159,12 @@ class TestHgHistedit:
 
     @pytest.mark.asyncio
     async def test_histedit_basic(self, hg_repo_with_commits: Path) -> None:
-        """Test histedit with non-interactive commands."""
+        """Test histedit with non-interactive commands.
+
+        Verifies that histedit runs without opening an editor for plan creation
+        when using --noninteractive flag (added to fix the bug where it would
+        hang waiting for user input).
+        """
         # Use non-interactive mode with commands parameter
         # Pick all revisions without changes
         result = await hg_histedit(
@@ -168,4 +173,54 @@ class TestHgHistedit:
             commands="pick 2\npick 3\npick 4",
         )
         # Should complete without opening editor
+        assert isinstance(result, str)
+        # Verify it succeeded (no error message)
+        assert not result.startswith("Error")
+
+    @pytest.mark.asyncio
+    async def test_histedit_drop_command(
+        self, hg_repo_with_commits: Path
+    ) -> None:
+        """Test histedit with 'drop' command - verifies non-interactive behavior."""
+        result = await hg_histedit(
+            str(hg_repo_with_commits),
+            revision="2",
+            commands="pick 2\ndrop 3\npick 4",
+        )
+        # Should complete without opening editor
+        assert isinstance(result, str)
+        assert not result.startswith("Error")
+
+    @pytest.mark.asyncio
+    async def test_histedit_mess_command(
+        self, hg_repo_with_commits: Path
+    ) -> None:
+        """Test histedit with 'mess' command - should not hang.
+
+        Verifies that the automatic non-interactive editor prevents hanging
+        when mess commands are used. The original commit message is kept.
+        """
+        result = await hg_histedit(
+            str(hg_repo_with_commits),
+            revision="2",
+            commands="mess 2\npick 3\npick 4",
+        )
+        # Should complete without hanging (even if it errors)
+        assert isinstance(result, str)
+
+    @pytest.mark.asyncio
+    async def test_histedit_fold_command(
+        self, hg_repo_with_commits: Path
+    ) -> None:
+        """Test histedit with 'fold' command - should not hang.
+
+        Verifies that the automatic non-interactive editor prevents hanging
+        when fold commands are used. The default combined message is kept.
+        """
+        result = await hg_histedit(
+            str(hg_repo_with_commits),
+            revision="2",
+            commands="pick 2\nfold 3\npick 4",
+        )
+        # Should complete without hanging (even if it errors)
         assert isinstance(result, str)

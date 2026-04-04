@@ -316,11 +316,14 @@ async def hg_histedit(
     Commands (one per line):
     - 'pick' - reorder or keep changeset
     - 'drop' - omit changeset
-    - 'mess' - reword commit message
-    - 'fold' - combine with preceding changeset
+    - 'mess' - reword commit message (keeps original in non-interactive mode)
+    - 'fold' - combine with preceding changeset (keeps combined messages)
     - 'roll' - like fold, but discard this commit's description
     - 'edit' - pause at this changeset for manual edits
     - 'base' - checkout changeset and apply further changesets from there
+
+    Note: In non-interactive mode, 'mess' commands will keep the original
+    commit message, and 'fold' will use the default combined message.
 
     Args:
         repo_path: The repository path
@@ -328,20 +331,21 @@ async def hg_histedit(
         commands: Commands file path or inline commands
             (e.g., "pick abc123\\ndrop def456")
     """
-    path = validate_repo_path(repo_path)
-    args = ["histedit"]
+    import tempfile
 
-    # Track temp file for cleanup
+    path = validate_repo_path(repo_path)
+    args = ["histedit", "--noninteractive"]
+
+    # Track temp files for cleanup
     commands_file_exists = False
     commands_file = ""
+    editor_script = None
 
     if revision:
         args.extend(["-r", revision])
 
     # Support inline commands by creating a temp file
     if commands:
-        import tempfile
-
         # Check if commands is a file path or inline commands
         starts_with_cmd = commands.strip().startswith(
             ("pick", "drop", "fold", "roll", "edit", "mess", "base")
@@ -355,16 +359,45 @@ async def hg_histedit(
                 commands_file = f.name
                 commands_file_exists = True
             args.extend(["--commands", commands_file])
+
+            # Check if we need a non-interactive editor for mess/fold commands
+            has_mess_or_fold = any(
+                line.strip().startswith(("mess ", "fold ", "m ", "f "))
+                for line in commands.split("\n")
+                if line.strip() and not line.startswith("#")
+            )
+            if has_mess_or_fold:
+                # Create a temp editor script that keeps the original message
+                # by copying stdin to the file (non-interactive)
+                editor_script = Path(tempfile.gettempdir()) / "hg_mcp_editor.sh"
+                editor_script.write_text(
+                    "#!/bin/bash\n# Non-interactive editor for histedit\n"
+                    "# Keeps the original message by doing nothing\n"
+                    "exit 0\n"
+                )
+                editor_script.chmod(0o755)
         else:
             # File path
             args.extend(["--commands", commands])
 
-    result = await run_hg_command(args, cwd=path)
+    # Prepare environment with non-interactive editor if needed
+    env = None
+    if editor_script and editor_script.exists():
+        env = {"EDITOR": str(editor_script), "VISUAL": str(editor_script)}
 
-    # Clean up temp file
+    result = await run_hg_command(args, cwd=path, env=env)
+
+    # Clean up temp files
     if commands_file_exists:
         try:
             Path(commands_file).unlink()
+        except Exception:
+            pass
+
+    # Clean up editor script
+    if editor_script and editor_script.exists():
+        try:
+            editor_script.unlink()
         except Exception:
             pass
 
