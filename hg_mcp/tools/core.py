@@ -78,7 +78,11 @@ async def hg_log(repo_path: str = ".", limit: int = 10) -> list[TextContent]:
 
 @mcp.tool()
 @handle_repo_errors
-async def hg_diff(repo_path: str = ".", revisions: str = "") -> str:
+async def hg_diff(
+    repo_path: str = ".",
+    revisions: str = "",
+    files: list[str] | str | None = None,
+) -> str:
     """Show changes in the working directory or between revisions.
 
     Equivalent to 'git diff'. Shows line-by-line changes to tracked files.
@@ -86,11 +90,14 @@ async def hg_diff(repo_path: str = ".", revisions: str = "") -> str:
     Args:
         repo_path: The repository path
         revisions: Revision spec (e.g., 'v1.0.0..tip', 'tip~3 tip', '0..2', '500..510')
+        files: Specific files to show diffs for (optional)
 
     Examples:
         - hg_diff() -> diff of working directory
         - hg_diff(revisions="500..510") -> diff from 500 to 510
         - hg_diff(revisions="v1.0.0..tip") -> diff from tag v1.0.0 to tip
+        - hg_diff(files="src/main.py") -> diff of specific file
+        - hg_diff(files=["src/a.py", "src/b.py"]) -> diff of multiple files
     """
     path = validate_repo_path(repo_path)
     args = ["diff"]
@@ -100,6 +107,17 @@ async def hg_diff(repo_path: str = ".", revisions: str = "") -> str:
         except ValueError as e:
             return f"Error: Invalid revision spec - {e}"
         args.extend(["-r", safe_revisions])
+
+    # Add file paths if specified
+    if files:
+        if isinstance(files, str):
+            file_list = [files]
+        else:
+            file_list = files
+        # Sanitize file paths
+        safe_files = [sanitize_input(f, max_length=500) for f in file_list]
+        args.extend(safe_files)
+
     return await run_hg_command(args, cwd=path)
 
 

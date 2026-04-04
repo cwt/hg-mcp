@@ -14,8 +14,10 @@ import pytest
 from mcp.types import TextContent
 
 from hg_mcp.tools import (
+    hg_add,
     hg_annotate,
     hg_backout,
+    hg_commit,
     hg_diff,
     hg_export,
     hg_files,
@@ -481,6 +483,42 @@ class TestHgDiff:
         result = await hg_diff(str(hg_repo_with_commits), revisions="1")
         text = _extract_text(result)
         assert text
+
+    @pytest.mark.asyncio
+    async def test_diff_with_files_parameter(
+        self, hg_repo_with_commits: Path, tmp_path: Path
+    ) -> None:
+        """Test diff with specific files."""
+        # Create a test file and modify it
+        test_file = hg_repo_with_commits / "test_diff_file.txt"
+        test_file.write_text("initial content")
+        await hg_add(str(hg_repo_with_commits), files=str(test_file))
+        await hg_commit(
+            repo_path=str(hg_repo_with_commits),
+            message="add test file",
+        )
+
+        # Modify the file
+        test_file.write_text("modified content")
+
+        # Get diff for specific file
+        result = await hg_diff(
+            repo_path=str(hg_repo_with_commits), files=str(test_file.name)
+        )
+        text = _extract_text(result)
+        assert isinstance(text, str)
+        assert "modified content" in text or "initial content" in text
+
+    @pytest.mark.asyncio
+    async def test_diff_with_multiple_files(
+        self, hg_repo_with_commits: Path
+    ) -> None:
+        """Test diff with multiple files."""
+        result = await hg_diff(
+            str(hg_repo_with_commits), files=["file1.txt", "file2.txt"]
+        )
+        text = _extract_text(result)
+        assert isinstance(text, str)
 
 
 class TestHgInit:
