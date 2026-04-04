@@ -87,6 +87,10 @@ def sanitize_input(value: str, max_length: int = 1000) -> str:
     if len(value) > max_length:
         raise ValueError(f"Input exceeds maximum length of {max_length}")
 
+    # Reject whitespace-only input
+    if not value.strip():
+        raise ValueError("Input must not be empty or whitespace-only")
+
     # Check for shell metacharacters that could be dangerous
     # Even though we use subprocess.exec, this is defense-in-depth
     dangerous_patterns = ["`", "$(", "${", "|", ";", "&&", "||", ">", "<", "&"]

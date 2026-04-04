@@ -244,13 +244,12 @@ async def hg_strip(
 @mcp.tool()
 @handle_repo_errors
 async def hg_transplant(
+    revisions: list[str] | str,
     repo_path: str = ".",
-    revisions: list[str] | str | None = None,
     source: str = "",
 ) -> str:
     """Cherry-pick changesets using the transplant extension.
 
-    If no revisions specified with --source, starts interactive mode.
     Use --source/-s to specify another repository to transplant from.
     """
     path = validate_repo_path(repo_path)
@@ -262,6 +261,8 @@ async def hg_transplant(
             return f"Error: Invalid source - {e}"
         args.extend(["--source", safe_source])
     revisions_list = parse_list_param(revisions)
+    if not revisions_list:
+        return "Error: revisions are required (e.g., ['abc123', 'def456']). Interactive mode is not supported."
     for rev in revisions_list:
         try:
             safe_rev = sanitize_input(rev, max_length=200)

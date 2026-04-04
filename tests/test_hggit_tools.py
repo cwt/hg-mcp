@@ -392,27 +392,24 @@ class TestHgTransplant:
     async def test_transplant_without_revisions(
         self, hg_repo_with_extensions: Path
     ) -> None:
-        """Test transplant without revisions parameter.
+        """Test transplant without revisions raises TypeError.
 
-        This is the bug fix: revisions should be optional.
-        When called without revisions, it may start interactive mode
-        or return an appropriate message.
+        revisions is required because calling without it would start
+        interactive mode, which is not supported in MCP.
         """
-        # Call without revisions - should not raise a validation error
-        result = await hg_transplant(repo_path=str(hg_repo_with_extensions))
-        assert isinstance(result, str)
+        with pytest.raises(TypeError, match="revisions"):
+            await hg_transplant(repo_path=str(hg_repo_with_extensions))
 
     @pytest.mark.asyncio
     async def test_transplant_with_source_no_revisions(
         self, hg_repo_with_extensions: Path
     ) -> None:
-        """Test transplant with source but without explicit revisions."""
-        # This is a valid use case: transplant from source interactively
-        result = await hg_transplant(
-            repo_path=str(hg_repo_with_extensions),
-            source="default",
-        )
-        assert isinstance(result, str)
+        """Test transplant with source but without revisions raises TypeError."""
+        with pytest.raises(TypeError, match="revisions"):
+            await hg_transplant(
+                repo_path=str(hg_repo_with_extensions),
+                source="default",
+            )
 
     @pytest.mark.asyncio
     async def test_transplant_with_extension(

@@ -109,10 +109,18 @@ async def hg_export(
     path = validate_repo_path(repo_path)
     args = ["export"]
     if output:
-        args.extend(["-o", output])
+        try:
+            safe_output = sanitize_input(output, max_length=500)
+        except ValueError as e:
+            return f"Error: Invalid output path - {e}"
+        args.extend(["-o", safe_output])
     revisions_list = parse_list_param(revisions)
     for rev in revisions_list:
-        args.append(rev)
+        try:
+            safe_rev = sanitize_input(rev, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid revision - {e}"
+        args.append(safe_rev)
     return await run_hg_command(args, cwd=path)
 
 
