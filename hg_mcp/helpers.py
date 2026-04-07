@@ -8,6 +8,82 @@ import asyncio
 import json
 import subprocess
 from pathlib import Path
+from typing import Optional
+
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+
+
+class APIKeyMiddleware(BaseHTTPMiddleware):
+    """Middleware that validates API key from request headers."""
+
+    def __init__(self, app: object, api_key: str) -> None:
+        super().__init__(app)  # type: ignore[arg-type]
+        self.api_key = api_key
+
+    async def dispatch(
+        self, request: Request, call_next: object
+    ) -> JSONResponse:
+        # Skip auth for CORS preflight
+        if request.method == "OPTIONS":
+            return await call_next(request)  # type: ignore[operator, no-any-return]
+
+        # Check API key from headers
+        provided_key = request.headers.get("x-api-key") or request.headers.get(
+            "api-key"
+        )
+        if not provided_key or provided_key != self.api_key:
+            return JSONResponse(
+                status_code=401,
+                content={"error": "Unauthorized: Invalid or missing API key"},
+            )
+
+        return await call_next(request)  # type: ignore[operator, no-any-return]
+
+
+# Optional jail path restriction for HTTP transports
+_jail_path: Optional[Path] = None
+
+
+def set_jail_path(path: Optional[str]) -> None:
+    """Set the jail path restriction for repository access.
+
+    When set, all repo_path operations must be within this directory tree.
+    """
+    global _jail_path
+    if path is None:
+        _jail_path = None
+    else:
+        _jail_path = Path(path).absolute()
+
+
+def validate_path_in_jail(path: Path) -> Path:
+    """Validate that a path is within the jail directory.
+
+    Args:
+        path: The absolute path to validate.
+
+    Returns:
+        The resolved absolute Path object.
+
+    Raises:
+        ValueError: If jail is set and path is outside it.
+    """
+    if _jail_path is None:
+        return path
+
+    resolved = path.resolve()
+    try:
+        resolved.relative_to(_jail_path)
+    except ValueError:
+        raise ValueError(
+            f"Path '{resolved}' is outside the allowed jail directory '{_jail_path}'. "
+            f"Access is restricted to '{_jail_path}' and its subdirectories."
+        )
+
+    return resolved
+
 
 # Mapping of command names to their required extensions for error hints
 EXTENSION_HINTS: dict[str, str] = {
@@ -155,6 +231,9 @@ def validate_path(repo_path: str, create_if_missing: bool = False) -> Path:
     except Exception as e:
         raise ValueError(f"Invalid path format: {e}") from e
 
+    # Check jail restriction
+    path = validate_path_in_jail(path)
+
     if not path.exists():
         if create_if_missing:
             try:
@@ -182,20 +261,34 @@ def validate_repo_path(repo_path: str) -> Path:
     Raises:
         ValueError: If the path is invalid, does not exist, or is not a repo.
     """
+    # Check jail restriction first (before resolving)
+    raw_path = Path(
+        repo_path.strip() if repo_path and repo_path.strip() else "."
+    ).absolute()
+    validate_path_in_jail(raw_path)
+
     path = validate_path(repo_path)
 
     # Check for .hg directory in current or parent directories
     current = path
+    repo_root = None
     while True:
         if (current / ".hg").is_dir():
-            return current
+            repo_root = current
+            break
         if current.parent == current:  # Root directory reached
             break
         current = current.parent
 
-    raise ValueError(
-        f"Not a Mercurial repository (no .hg found in {path} or parents)"
-    )
+    if repo_root is None:
+        raise ValueError(
+            f"Not a Mercurial repository (no .hg found in {path} or parents)"
+        )
+
+    # Verify the actual repo root is also within jail
+    validate_path_in_jail(repo_root)
+
+    return repo_root
 
 
 def _get_extension_hint(error_text: str, command_args: list[str]) -> str:

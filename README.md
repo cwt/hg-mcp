@@ -58,6 +58,8 @@ A Model Context Protocol (MCP) server for Mercurial repository interaction, writ
 ### Performance & Reliability
 
 - **Async I/O**: Asynchronous command execution for responsive operations
+- **HTTP Transports**: Streamable HTTP and SSE support for web-based clients (e.g., llama.cpp WebUI)
+- **Security**: Jail path restriction (required for HTTP) and optional API key authentication
 - **JSON Output Support**: Automatic JSON formatting for supported commands (`status`, `log`, `bookmarks`, `topics`, `config`, `resolve`, `tags`, `heads`, `id`, `parents`, `children`, `outgoing`, `incoming`, `paths`, `annotate`, `files`, `verify`, `identify`)
 - **Optional Performance Boost**: Support for uvloop (Unix/macOS) and winloop (Windows) for enhanced performance
 - **Smart Error Handling**: Helpful error messages with hints for missing extensions
@@ -85,13 +87,94 @@ pip install winloop  # On Windows
 
 ## Usage
 
+### Standard Input/Output (stdio) - Default Mode
+
 ```bash
 # Activate your virtual environment first
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 hg-mcp
 ```
 
-This starts the MCP server that can be used with MCP clients like Claude for Desktop, Qwen-Coder, Gemini-CLI, and OpenCode.
+This starts the MCP server using stdio transport, which can be used with MCP clients like Claude for Desktop, Qwen-Coder, Gemini-CLI, and OpenCode.
+
+### HTTP Transport (SSE and/or Streamable HTTP)
+
+For web-based MCP clients like llama.cpp WebUI, you can run the server with HTTP transport:
+
+```bash
+# SSE only (compatible with llama.cpp WebUI)
+hg-mcp --transport sse --port 8000
+
+# Streamable HTTP only
+hg-mcp --transport streamable-http --port 8000
+
+# Both SSE and Streamable HTTP on the same server
+hg-mcp --transport sse streamable-http --port 8000
+```
+
+**Endpoints:**
+- SSE: `http://localhost:8000/sse`
+- Streamable HTTP: `http://localhost:8000/mcp`
+
+**Options:**
+- `--transport`: One or more transport protocols (`stdio`, `sse`, `streamable-http`)
+  - Default: `stdio`
+  - Multiple values: `--transport sse streamable-http`
+- `--port`: Port to listen on (default: 8000)
+- `--host`: Host to bind to (default: 0.0.0.0)
+- `--api-key`: Require API key authentication. Clients must send `X-API-Key` or `API-Key` header with this value.
+- `--jail`: **Required for HTTP transports.** Restrict repository access to this directory tree. Example: `--jail /home/user/projects`
+
+### Security Features
+
+When exposing the MCP server over TCP/IP, two security mechanisms are available:
+
+#### 1. Jail Path Restriction (`--jail`)
+
+**Required for all HTTP transports.** Restricts repository access to a specific directory tree, preventing access to paths outside the jail:
+
+```bash
+# Only allow access to repos under /home/user/projects
+hg-mcp --transport streamable-http --port 8000 --jail /home/user/projects
+```
+
+This prevents:
+- Access to repositories outside the jail directory
+- Path traversal attacks (e.g., `../../etc/passwd`)
+- Symlink escapes (resolved paths are checked)
+
+#### 2. API Key Authentication (`--api-key`)
+
+Require clients to provide a valid API key:
+
+```bash
+hg-mcp --transport streamable-http --port 8000 --jail /home/user/projects --api-key your-secret-key
+```
+
+**In llama.cpp WebUI:**
+1. Go to **Settings** → **MCP Servers** → **Add New Server**
+2. Enter Server URL: `http://127.0.0.1:8000/mcp`
+3. Click **+ Add** under **Custom Headers**
+4. Add header:
+   - Name: `X-API-Key`
+   - Value: `your-secret-key`
+5. Click **Add** and then **Save settings**
+
+### Integration with llama.cpp WebUI
+
+1. Start the server with Streamable HTTP transport:
+   ```bash
+   hg-mcp --transport streamable-http --port 8000 --jail /home/user/projects
+   ```
+
+2. In llama.cpp WebUI, go to **Settings** → **MCP Servers** → **Add New Server**
+
+3. Enter the server URL:
+   - `http://localhost:8000/mcp`
+
+4. Click **Add** and then **Save settings**
+
+**Note:** If you're running llama.cpp on a different machine, replace `localhost` with your server's IP address.
 
 ## Tools
 
@@ -283,7 +366,8 @@ After configuration, restart your AI assistant and verify the MCP server is conn
 
 - Python 3.10+
 - Mercurial installed and available in PATH
-- MCP-compatible client
+- MCP-compatible client (for stdio mode)
+- For HTTP transports: A web-based MCP client (e.g., llama.cpp WebUI)
 
 ## Development
 
