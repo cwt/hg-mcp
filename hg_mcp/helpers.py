@@ -9,39 +9,67 @@ import json
 import secrets
 import subprocess
 from pathlib import Path
-
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import JSONResponse
+from typing import Any, Awaitable, Callable
 
 
-class APIKeyMiddleware(BaseHTTPMiddleware):
-    """Middleware that validates API key from request headers."""
+class APIKeyMiddleware:
+    """ASGI Middleware that validates API key from request headers."""
 
-    def __init__(self, app: object, api_key: str) -> None:
-        super().__init__(app)  # type: ignore[arg-type]
+    def __init__(self, app: Any, api_key: str) -> None:
+        self.app = app
         self.api_key = api_key
 
-    async def dispatch(
-        self, request: Request, call_next: object
-    ) -> JSONResponse:
+    async def __call__(
+        self,
+        scope: dict[str, Any],
+        receive: Callable[[], Awaitable[dict[str, Any]]],
+        send: Callable[[dict[str, Any]], Awaitable[None]],
+    ) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
         # Skip auth for CORS preflight
-        if request.method == "OPTIONS":
-            return await call_next(request)  # type: ignore[operator, no-any-return]
+        if scope["method"] == "OPTIONS":
+            await self.app(scope, receive, send)
+            return
 
         # Check API key from headers
-        provided_key = request.headers.get("x-api-key") or request.headers.get(
-            "api-key"
+        # Headers in scope are a list of (name, value) tuples as bytes
+        headers = dict(scope.get("headers", []))
+        provided_key_bytes = headers.get(b"x-api-key") or headers.get(
+            b"api-key"
         )
-        if not provided_key or not secrets.compare_digest(
-            provided_key, self.api_key
-        ):
-            return JSONResponse(
-                status_code=401,
-                content={"error": "Unauthorized: Invalid or missing API key"},
-            )
 
-        return await call_next(request)  # type: ignore[operator, no-any-return]
+        is_authorized = False
+        if provided_key_bytes:
+            try:
+                provided_key = provided_key_bytes.decode("latin-1")
+                if secrets.compare_digest(provided_key, self.api_key):
+                    is_authorized = True
+            except Exception:
+                pass
+
+        if is_authorized:
+            await self.app(scope, receive, send)
+            return
+
+        # Unauthorized response
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 401,
+                "headers": [(b"content-type", b"application/json")],
+            }
+        )
+        await send(
+            {
+                "type": "http.response.body",
+                "body": json.dumps(
+                    {"error": "Unauthorized: Invalid or missing API key"}
+                ).encode("utf-8"),
+            }
+        )
 
 
 def validate_path_in_jail(path: Path) -> Path:

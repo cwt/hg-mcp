@@ -130,81 +130,93 @@ def main() -> None:
             import uvicorn
             from starlette.applications import Starlette
             from starlette.middleware.cors import CORSMiddleware
+            from starlette.routing import BaseRoute, Route
 
             from hg_mcp.helpers import APIKeyMiddleware
 
             mcp.jail_path = args.jail
+            mcp.settings.json_response = True
 
-            def add_cors(app: Starlette) -> Starlette:
-                """Add CORS middleware to allow browser-based clients."""
-                app.add_middleware(
-                    CORSMiddleware,
-                    allow_origins=["*"],
-                    allow_credentials=True,
-                    allow_methods=["*"],
-                    allow_headers=["*"],
-                    expose_headers=["Mcp-Session-Id"],
+            # SSE and Streamable HTTP app setup
+            # We must create these apps before Starlette() to use their routes
+            sse_app = mcp.sse_app()
+            http_app = mcp.streamable_http_app()
+
+            # Find the streamable_http_app handler (needed for POST /sse compatibility)
+            http_handler = None
+            for route in http_app.routes:
+                if (
+                    isinstance(route, Route)
+                    and route.path == mcp.settings.streamable_http_path
+                ):
+                    http_handler = route.endpoint
+                    break
+
+            # Create a combined routes list
+            combined_routes: list[BaseRoute] = []
+
+            # 1. Compatibility route: POST /sse -> StreamableHTTP
+            if http_handler:
+                combined_routes.append(
+                    Route(mcp.settings.sse_path, http_handler, methods=["POST"])
                 )
-                return app
-
-            def add_api_key_auth(app: Starlette, api_key: str) -> Starlette:
-                """Add API key validation middleware."""
-                app.add_middleware(APIKeyMiddleware, api_key=api_key)
-                return app
-
-            if len(transports) == 1:
-                # Single transport
-                transport = transports.pop()
-                print(f"Starting HG MCP Server with {transport} transport")
-
-                if transport == "sse":
-                    print(f"SSE endpoint: http://{args.host}:{args.port}/sse")
-                    app = mcp.sse_app()
-                    add_cors(app)
-                    if args.api_key:
-                        add_api_key_auth(app, args.api_key)
-                        print("API key authentication enabled")
-                    uvicorn.run(app, host=args.host, port=args.port)
-                elif transport == "streamable-http":
-                    print(
-                        f"Streamable HTTP endpoint: http://{args.host}:{args.port}/mcp"
-                    )
-                    app = mcp.streamable_http_app()
-                    add_cors(app)
-                    if args.api_key:
-                        add_api_key_auth(app, args.api_key)
-                        print("API key authentication enabled")
-                    uvicorn.run(app, host=args.host, port=args.port)
-            else:
-                # Both transports - need custom combined app
-                # SSE creates routes at /sse and /messages
-                # Streamable HTTP creates route at /mcp
-                sse_app = mcp.sse_app()
-                http_app = mcp.streamable_http_app()
-
-                # Combine all routes from both apps
-                combined_routes = list(sse_app.routes) + list(http_app.routes)
-
-                app = Starlette(
-                    routes=combined_routes,
-                    # Use HTTP app's lifespan which initializes the session manager
-                    lifespan=http_app.router.lifespan_context,
-                )
-
-                add_cors(app)
-                if args.api_key:
-                    add_api_key_auth(app, args.api_key)
-                    print("API key authentication enabled")
-
                 print(
-                    "Starting HG MCP Server with sse and streamable-http transport"
-                )
-                print(f"SSE endpoint: http://{args.host}:{args.port}/sse")
-                print(
-                    f"Streamable HTTP endpoint: http://{args.host}:{args.port}/mcp"
+                    f"Added POST support to {mcp.settings.sse_path} for Streamable HTTP compatibility"
                 )
 
-                uvicorn.run(app, host=args.host, port=args.port)
+            # 2. Regular routes
+            if "sse" in transports:
+                combined_routes.extend(sse_app.routes)
+
+            if "streamable-http" in transports:
+                # Only add if path doesn't already exist or it's a different path
+                for route in http_app.routes:
+                    if isinstance(route, Route):
+                        if not any(
+                            isinstance(r, Route) and r.path == route.path
+                            for r in combined_routes
+                        ):
+                            combined_routes.append(route)
+                    else:
+                        combined_routes.append(route)
+
+            # Create the Starlette app with combined routes
+            app = Starlette(
+                routes=combined_routes,
+                # Use http_app's lifespan which initializes the session manager
+                lifespan=http_app.router.lifespan_context,
+            )
+
+            # Add CORS middleware
+            app.add_middleware(
+                CORSMiddleware,
+                allow_origins=["*"],
+                allow_credentials=True,
+                allow_methods=["*"],
+                allow_headers=["*"],
+                expose_headers=["Mcp-Session-Id"],
+            )
+
+            # Add API key middleware if needed
+            if args.api_key:
+                # Middleware applied in reverse order of addition
+                # Request -> APIKeyMiddleware -> CORSMiddleware -> App
+                app.add_middleware(APIKeyMiddleware, api_key=args.api_key)
+                print("API key authentication enabled")
+
+            print(
+                f"Starting HG MCP Server with {' and '.join(transports)} transport"
+            )
+            if "sse" in transports:
+                print(
+                    f"SSE endpoint: http://{args.host}:{args.port}{mcp.settings.sse_path}"
+                )
+            if "streamable-http" in transports:
+                print(
+                    f"Streamable HTTP endpoint: http://{args.host}:{args.port}{mcp.settings.streamable_http_path}"
+                )
+
+            uvicorn.run(app, host=args.host, port=args.port)
         else:
             print(
                 f"Error: Invalid transport combination: {transports}",
