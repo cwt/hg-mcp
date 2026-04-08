@@ -6,65 +6,60 @@ A Model Context Protocol (MCP) server for Mercurial repository interaction, writ
 
 ## Features
 
-### Core Version Control Operations
+### Core Version Control
 
-- **Initialization**: Create a new Mercurial repository (equivalent to `git init`)
-- **Status & Diff**: View working directory status and uncommitted changes (equivalent to `git status` and `git diff`)
-- **Commit Management**: Add files, commit changes with messages, and remove files from version control
-- **History Navigation**: View commit history with configurable limits, update to any revision (like `git checkout`/`git switch`)
-- **Branch Management**: Create, list, and switch between branches; supports both permanent branches and lightweight bookmarks
+- **Initialization**: Create new repositories (`hg_init`)
+- **Status & Diff**: View working directory status (`hg_status`) and line-by-line changes (`hg_diff`)
+- **Commit Management**: Add files (`hg_add`), commit changes (`hg_commit`), remove files (`hg_remove`), and amend the last commit (`hg_amend`)
+- **File Inspection**: View file content at any revision (`hg_cat`) and rename or move files (`hg_rename`)
 
-### Advanced Branching with Topics
+### Branching & Navigation
 
-- **Topic Support**: Create and manage lightweight branches (topics) using the evolve extension
-- **Topic Tracking**: List all topics and identify the currently active topic
-- **Bookmark Integration**: Seamless bookmark management for Git-like branch workflows
+- **Navigation**: Update to any revision, branch, or bookmark (`hg_update`)
+- **Named Branches**: Create and list permanent Mercurial branches (`hg_branch`)
+- **Bookmarks**: Manage lightweight, Git-like pointers (`hg_bookmark`, `hg_bookmarks`)
+- **Advanced Topics**: WIP feature isolation with lightweight branches (`hg_topic`, `hg_topics`, `hg_topic_current`)
+- **Tags**: Create, remove, and list repository tags (`hg_tag`, `hg_tags`)
 
 ### Remote Synchronization
 
-- **Push/Pull**: Push changes to remote repositories and pull from remote sources
-- **Remote Configuration**: Support for named remotes and direct URLs
+- **Push/Pull**: Sync changes with remote repositories (`hg_push`, `hg_pull`)
+- **Remote Insights**: Preview incoming or outgoing changesets (`hg_incoming`, `hg_outgoing`)
+- **Path Management**: List and manage configured remote paths (`hg_paths`)
+- **Branch Heads**: Identify branch heads across the repository (`hg_heads`)
 
-### History Rewriting (Requires Extensions)
+### History Rewriting & Recovery
 
-- **Rebase**: Move or combine changesets onto different revisions (like `git rebase`)
-- **Strip**: Permanently remove changesets (like `git reset --hard`)
-- **Histedit**: Interactive history editing (like `git rebase -i`)
-- **Transplant**: Cherry-pick changesets from other branches (like `git cherry-pick`)
-- **Evolve**: Track how changesets have been rewritten over time
+- **Rebase & Strip**: Move changesets (`hg_rebase`) or permanently remove them (`hg_strip`)
+- **Interactive Editing**: Modify a linear series of changesets non-interactively (`hg_histedit`)
+- **Transplant**: Cherry-pick changesets from other branches (`hg_transplant`)
+- **Backout**: Reverse the effects of earlier changesets (`hg_backout`)
+- **Evolve**: Track the evolution of rewritten changesets (`hg_evolve`)
 
 ### Merge & Conflict Resolution
 
-- **Merge**: Combine changes from different branches
-- **Conflict Management**: List and track files with unresolved merge conflicts
-- **Revert**: Discard uncommitted changes and restore files to last committed state
+- **Merging**: Combine changes from different branches (`hg_merge`)
+- **Conflict Management**: List and track files with unresolved merge conflicts (`hg_resolve`)
+- **Revert**: Discard uncommitted changes and restore files to their last committed state (`hg_revert`)
 
-### Large File Support
+### Repository Inspection & Diagnostics
 
-- **Largefiles Extension**: List and manage large files stored outside normal history with size information
+- **Blame/Annotate**: Show line-by-line changeset information (`hg_annotate`)
+- **File Listing**: List all tracked files in the current revision (`hg_files`)
+- **State Summary**: Get a concise summary of the working directory state (`hg_summary`)
+- **Integrity & Identity**: Verify repository integrity (`hg_verify`) and identify the current revision (`hg_identify`)
+- **Patch Management**: Export changesets as patches (`hg_export`) or import patch files (`hg_import`)
 
-### Git Integration (hg-git)
+### Technical Features
 
-- **Git Remote Detection**: Automatically detect if repository is Git-backed
-- **Branch Mapping**: View how bookmarks map to Git branches
-- **Configuration Insights**: Display hg-git settings and branch bookmark suffix configuration
-
-### Configuration & Diagnostics
-
-- **Extension Detection**: List all enabled Mercurial extensions
-- **Repository Validation**: Verify Mercurial repository status and configuration
-- **Built-in Help**: Access Mercurial command documentation and concepts
-
-### Performance & Reliability
-
-- **Async I/O**: Asynchronous command execution for responsive operations
+- **Async I/O**: Asynchronous command execution for high-performance operations
+- **Git Integration (hg-git)**: Automatic detection of Git-backed repos and branch mapping (`hg_git`)
 - **HTTP Transports**: Streamable HTTP and SSE support for web-based clients (e.g., llama.cpp WebUI)
-- **Security**: Jail path restriction (required for HTTP) and optional API key authentication
-- **JSON Output Support**: Automatic JSON formatting for supported commands (`status`, `log`, `bookmarks`, `topics`, `config`, `resolve`, `tags`, `heads`, `id`, `parents`, `children`, `outgoing`, `incoming`, `paths`, `annotate`, `files`, `verify`, `identify`)
-- **Optional Performance Boost**: Support for uvloop (Unix/macOS) and winloop (Windows) for enhanced performance
-- **Smart Error Handling**: Helpful error messages with hints for missing extensions
-- **Path Validation**: Automatic repository detection even when working in subdirectories
-- **Comprehensive Testing**: Full pytest test suite with isolated repository fixtures (uses tmpfs on Linux for ~10-100x faster I/O)
+- **Security**: Jail path restriction (required for HTTP) and secure API key authentication
+- **JSON Output**: Automatic JSON formatting for 20+ commands for easy machine parsing
+- **Large File Support**: Management of binaries outside normal history (`hg_largefiles`)
+- **Diagnostics & Help**: List extensions (`hg_extensions`), config (`hg_config`), and access built-in help (`hg_help`)
+- **Reliability**: Comprehensive test suite using tmpfs on Linux for extremely fast verification
 
 ## Installation
 
@@ -113,17 +108,19 @@ hg-mcp --transport sse streamable-http --port 8000
 ```
 
 **Endpoints:**
+
 - SSE: `http://localhost:8000/sse`
 - Streamable HTTP: `http://localhost:8000/mcp`
 
 **Options:**
+
 - `--transport`: One or more transport protocols (`stdio`, `sse`, `streamable-http`)
   - Default: `stdio`
   - Multiple values: `--transport sse streamable-http`
 - `--port`: Port to listen on (default: 8000)
 - `--host`: Host to bind to (default: 0.0.0.0)
-- `--api-key`: Require API key authentication. Clients must send `X-API-Key` or `API-Key` header with this value.
-- `--jail`: **Required for HTTP transports.** Restrict repository access to this directory tree. Example: `--jail /home/user/projects`
+- `--api-key`: **Optional.** Enable mandatory API key authentication. When set, clients must provide this key in their request headers.
+- `--jail`: **Required for HTTP transports.** Restrict repository access to this directory tree for security.
 
 ### Security Features
 
@@ -131,175 +128,29 @@ When exposing the MCP server over TCP/IP, two security mechanisms are available:
 
 #### 1. Jail Path Restriction (`--jail`)
 
-**Required for all HTTP transports.** Restricts repository access to a specific directory tree, preventing access to paths outside the jail:
+**Required for all HTTP transports.** This restricts repository access to a specific directory tree, preventing unauthorized access to paths outside the jail:
 
 ```bash
-# Only allow access to repos under /home/user/projects
+# Restrict access to /home/user/projects and its subdirectories
 hg-mcp --transport streamable-http --port 8000 --jail /home/user/projects
 ```
 
-This prevents:
-- Access to repositories outside the jail directory
-- Path traversal attacks (e.g., `../../etc/passwd`)
-- Symlink escapes (resolved paths are checked)
-
 #### 2. API Key Authentication (`--api-key`)
 
-Require clients to provide a valid API key:
+**Optional.** You can require clients to authenticate by providing a valid API key. When this option is enabled, the server will reject any request that does not include a matching `X-API-Key` or `API-Key` header:
 
 ```bash
+# Enable mandatory API key authentication
 hg-mcp --transport streamable-http --port 8000 --jail /home/user/projects --api-key your-secret-key
 ```
 
-**In llama.cpp WebUI:**
-1. Go to **Settings** → **MCP Servers** → **Add New Server**
-2. Enter Server URL: `http://127.0.0.1:8000/mcp`
-3. Click **+ Add** under **Custom Headers**
-4. Add header:
-   - Name: `X-API-Key`
-   - Value: `your-secret-key`
-5. Click **Add** and then **Save settings**
-
-### Integration with llama.cpp WebUI
-
-1. Start the server with Streamable HTTP transport:
-   ```bash
-   hg-mcp --transport streamable-http --port 8000 --jail /home/user/projects
-   ```
-
-2. In llama.cpp WebUI, go to **Settings** → **MCP Servers** → **Add New Server**
-
-3. Enter the server URL:
-   - `http://localhost:8000/mcp`
-
-4. Click **Add** and then **Save settings**
-
-**Note:** If you're running llama.cpp on a different machine, replace `localhost` with your server's IP address.
-
-## Tools
-
-### Core Commands
-
-- `hg_init`: Create a new Mercurial repository (like `git init`)
-- `hg_status`: Show working directory status with JSON output (like `git status`)
-- `hg_log`: Show commit history with JSON output (like `git log`)
-- `hg_diff`: Show uncommitted changes (like `git diff`)
-- `hg_commit`: Commit changes with a message; auto-syncs to Git if hg-git enabled
-- `hg_add`: Add files to version control (like `git add`)
-- `hg_remove`: Remove files (like `git rm`)
-- `hg_amend`: Amend current commit; auto-syncs to Git if hg-git enabled
-- `hg_cat`: Show file content at specific revision
-- `hg_rename`: Rename/move files (like `git mv`)
-
-### Branch & Navigation
-
-- `hg_update`: Update to a revision (like `git checkout`/`git switch`)
-- `hg_branch`: Show or create branches
-- `hg_bookmark`: Show or create bookmarks; auto-syncs to Git if hg-git enabled
-- `hg_bookmarks`: List bookmarks with JSON output (lightweight branches, like Git branches in hg-git)
-- `hg_topic`: Create a topic (lightweight branch)
-- `hg_topics`: List all topics with JSON output
-- `hg_topic_current`: Show current topic (JSON-parsed)
-
-### Remote Sync
-
-- `hg_push`: Push changes to remote (like `git push`). Shows available remotes if destination doesn't exist
-- `hg_pull`: Pull changes from remote (like `git fetch`)
-- `hg_paths`: List configured paths/remotes with JSON output
-
-### History Rewriting (Extensions Required)
-
-- `hg_rebase`: Rebase changesets (like `git rebase`, requires 'rebase' extension)
-- `hg_strip`: Remove changesets (like `git reset --hard`, requires 'strip' extension)
-- `hg_histedit`: Interactive history editing (like `git rebase -i`, requires 'histedit')
-- `hg_evolve`: Show evolution history (requires 'evolve' extension)
-- `hg_transplant`: Cherry-pick changesets (like `git cherry-pick`, requires 'transplant')
-
-### Merge & Conflict Resolution
-
-- `hg_merge`: Merge branches (like `git merge`)
-- `hg_resolve`: List merge conflicts with JSON output
-- `hg_revert`: Discard uncommitted changes (like `git checkout --` / `git restore`)
-
-### Large Files
-
-- `hg_largefiles`: List large files (requires 'largefiles' extension)
-
-### Configuration & Help
-
-- `hg_config`: Show Mercurial configuration with JSON output (check for hg-git extension)
-- `hg_extensions`: List enabled extensions
-- `hg_git`: Check hg-git extension status and Git remote configuration
-- `hg_help`: Get help on Mercurial commands and concepts
-- `hg_paths`: List configured paths/remotes with JSON output
-- `hg_tags`: List all tags with JSON output
-- `hg_tag`: Create or remove a tag (like `git tag`)
-
-### Repository Inspection
-
-- `hg_annotate`: Show changeset info by line for each file (like `git blame`)
-- `hg_files`: List all tracked files in current revision
-- `hg_summary`: Summarize working directory state (branch, parent, phases)
-- `hg_verify`: Verify repository integrity
-- `hg_identify`: Get changeset ID and branch info for working directory
-
-### Patch Management
-
-- `hg_export`: Export changesets as patch files
-- `hg_import`: Import ordered set of patches
-
-### Remote Operations
-
-- `hg_heads`: List branch heads with JSON output
-- `hg_incoming`: Preview changesets to pull from remote
-- `hg_outgoing`: Preview changesets to push to remote
-
-### History Operations
-
-- `hg_backout`: Reverse effect of earlier changeset (with `--no-commit` by default)
-
 ## Integration with AI Assistants
 
-To use this MCP server with your AI coding assistant, you need to configure it in your assistant's MCP settings. The key is pointing to the correct executable path in your virtual environment.
+To use this MCP server with your AI coding assistant, point to the correct executable path in your virtual environment.
 
-### Step 1: Find Your Virtual Environment Path
+### Configuration Examples
 
-First, determine where your virtual environment is located:
-
-**If using Poetry:**
-
-```bash
-# Get the virtual environment path
-poetry env info --path
-# Example output: /home/user/.cache/pypoetry/virtualenvs/hg-mcp-xxxxx-py3.10
-```
-
-**If using pip/venv:**
-
-```bash
-# The path is typically: /path/to/hg-mcp/.venv
-# Or if created elsewhere: echo $VIRTUAL_ENV
-```
-
-### Step 2: Configure Your AI Assistant
-
-The executable will be located at:
-
-- **Unix/macOS:** `<venv-path>/bin/hg-mcp`
-- **Windows:** `<venv-path>\Scripts\hg-mcp.exe`
-
-Replace `<venv-path>` with your actual virtual environment path from Step 1.
-
----
-
-### Qwen-Coder & Gemini-CLI
-
-Both use identical configuration format:
-
-**Configuration files:**
-
-- Qwen-Coder: `~/.qwen/settings.json`
-- Gemini-CLI: `~/.gemini/settings.json`
+#### Claude Desktop / Qwen-Coder / Gemini-CLI
 
 ```json
 {
@@ -311,11 +162,7 @@ Both use identical configuration format:
 }
 ```
 
----
-
-### OpenCode
-
-Configuration file: `~/.config/opencode/opencode.json`
+#### OpenCode
 
 ```json
 {
@@ -329,45 +176,11 @@ Configuration file: `~/.config/opencode/opencode.json`
 }
 ```
 
-**Note:** When you use `repo_path="."` (default), it resolves to OpenCode's current working directory, so the tools will work in whatever project directory you're currently in.
-
----
-
-### Claude Desktop
-
-Configuration file location:
-
-- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "hg-mcp": {
-      "command": "/path/to/your/venv/bin/hg-mcp"
-    }
-  }
-}
-```
-
----
-
-### Other MCP-Compatible Clients
-
-```text
-Command: /path/to/your/venv/bin/hg-mcp
-```
-
-### Verifying Your Setup
-
-After configuration, restart your AI assistant and verify the MCP server is connected. You can test by asking your assistant to run a Mercurial command like "show the status of this repository" or "list recent commits".
-
 ## Requirements
 
 - Python 3.10+
 - Mercurial installed and available in PATH
-- MCP-compatible client (for stdio mode)
-- For HTTP transports: A web-based MCP client (e.g., llama.cpp WebUI)
+- MCP-compatible client
 
 ## Development
 
@@ -377,27 +190,9 @@ After configuration, restart your AI assistant and verify the MCP server is conn
 # Install development dependencies
 pip install -e ".[dev]"
 
-# Run all tests
-pytest
-
-# Run specific test file
-pytest tests/test_core_tools.py -v
-
-# Run with coverage
-pytest --cov=hg_mcp --cov-report=html
+# Run all tests with coverage
+./scripts/runtest.sh
 ```
-
-### Test Fixtures
-
-The test suite provides isolated Mercurial repositories with controlled extension configurations:
-
-- `hg_repo`: Clean repo with NO extensions enabled
-- `hg_repo_with_commits`: Repo with 5 sample commits
-- `hg_repo_with_extensions`: Repo with configurable extensions (e.g., rebase, evolve)
-- `hg_repo_with_branches`: Multi-branch setup
-- `hg_repo_with_bookmarks`: Repo with bookmarks at different revisions
-- `hg_repo_with_tags`: Repo with tagged revisions
-- `hg_repo_with_remote`: Repo with remote configured
 
 ### Code Quality
 

@@ -3,9 +3,41 @@
 Creates and configures the FastMCP server for hg-mcp operations.
 """
 
+from pathlib import Path
+from typing import Optional, Union
+
 from mcp.server.fastmcp import FastMCP
 
-mcp: FastMCP = FastMCP(
+
+class HG_MCP(FastMCP):
+    """Custom FastMCP subclass with jail path support."""
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+        self._jail_path: Optional[Path] = None
+
+    @property
+    def jail_path(self) -> Optional[Path]:
+        """Get the jail path restriction."""
+        return self._jail_path
+
+    @jail_path.setter
+    def jail_path(self, value: Optional[Union[str, Path]]) -> None:
+        """Set the jail path restriction. Immutable once set to a non-None value."""
+        if value is None:
+            return
+
+        new_path = Path(value).absolute()
+        if self._jail_path is not None:
+            if self._jail_path == new_path:
+                return
+            raise RuntimeError(
+                f"jail_path is immutable once set (current: {self._jail_path}, attempted: {new_path})"
+            )
+        self._jail_path = new_path
+
+
+mcp: HG_MCP = HG_MCP(
     name="hg",
     instructions="""You are an expert Mercurial engineer. Follow modern best practices:
 

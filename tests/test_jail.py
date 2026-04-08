@@ -10,11 +10,11 @@ from pathlib import Path
 import pytest
 
 from hg_mcp.helpers import (
-    set_jail_path,
     validate_path,
     validate_path_in_jail,
     validate_repo_path,
 )
+from hg_mcp.server import mcp
 
 
 class TestJailPathValidation:
@@ -22,15 +22,15 @@ class TestJailPathValidation:
 
     def setup_method(self) -> None:
         """Reset jail path before each test."""
-        set_jail_path(None)
+        mcp._jail_path = None
 
     def teardown_method(self) -> None:
         """Clean up jail path after each test."""
-        set_jail_path(None)
+        mcp._jail_path = None
 
     def test_no_jail_allows_any_path(self, tmp_path: Path) -> None:
         """When jail is not set, any path should be allowed."""
-        set_jail_path(None)
+        mcp._jail_path = None
         result = validate_path_in_jail(tmp_path)
         assert result == tmp_path
 
@@ -38,7 +38,7 @@ class TestJailPathValidation:
         """Paths inside jail should be allowed."""
         jail = tmp_path / "jail"
         jail.mkdir()
-        set_jail_path(str(jail))
+        mcp.jail_path = str(jail)
 
         allowed_path = jail / "repo" / "subdir"
         allowed_path.mkdir(parents=True)
@@ -50,7 +50,7 @@ class TestJailPathValidation:
         """Paths outside jail should be blocked."""
         jail = tmp_path / "jail"
         jail.mkdir()
-        set_jail_path(str(jail))
+        mcp.jail_path = str(jail)
 
         outside_path = tmp_path / "outside"
         outside_path.mkdir()
@@ -65,7 +65,7 @@ class TestJailPathValidation:
         """Path traversal with .. should be blocked."""
         jail = tmp_path / "jail"
         jail.mkdir()
-        set_jail_path(str(jail))
+        mcp.jail_path = str(jail)
 
         escape_path = jail / ".." / ".." / "etc"
         escaped = escape_path.resolve()
@@ -79,7 +79,7 @@ class TestJailPathValidation:
         """The jail path itself should be allowed."""
         jail = tmp_path / "jail"
         jail.mkdir()
-        set_jail_path(str(jail))
+        mcp.jail_path = str(jail)
 
         result = validate_path_in_jail(jail)
         assert result == jail
@@ -88,7 +88,7 @@ class TestJailPathValidation:
         """Symlinks pointing outside jail should be blocked."""
         jail = tmp_path / "jail"
         jail.mkdir()
-        set_jail_path(str(jail))
+        mcp.jail_path = str(jail)
 
         outside = tmp_path / "outside"
         outside.mkdir()
@@ -102,23 +102,46 @@ class TestJailPathValidation:
 
         assert "outside the allowed jail" in str(exc_info.value)
 
+    def test_jail_path_immutability(self, tmp_path: Path) -> None:
+        """jail_path should be immutable once set to a non-None value."""
+        jail1 = tmp_path / "jail1"
+        jail1.mkdir()
+        mcp.jail_path = str(jail1)
+
+        # Setting to same path should be fine
+        mcp.jail_path = str(jail1)
+
+        # Setting to different path should raise RuntimeError
+        jail2 = tmp_path / "jail2"
+        jail2.mkdir()
+        with pytest.raises(RuntimeError) as exc_info:
+            mcp.jail_path = str(jail2)
+
+        assert "immutable" in str(exc_info.value)
+
+    def test_jail_path_none(self) -> None:
+        """Setting jail_path to None should do nothing."""
+        mcp._jail_path = None
+        mcp.jail_path = None
+        assert mcp._jail_path is None
+
 
 class TestValidatePathWithJail:
     """Tests for validate_path with jail restriction."""
 
     def setup_method(self) -> None:
         """Reset jail path before each test."""
-        set_jail_path(None)
+        mcp._jail_path = None
 
     def teardown_method(self) -> None:
         """Clean up jail path after each test."""
-        set_jail_path(None)
+        mcp._jail_path = None
 
     def test_validate_path_inside_jail(self, tmp_path: Path) -> None:
         """validate_path should work for paths inside jail."""
         jail = tmp_path / "jail"
         jail.mkdir()
-        set_jail_path(str(jail))
+        mcp.jail_path = str(jail)
 
         target = jail / "project"
         target.mkdir()
@@ -130,7 +153,7 @@ class TestValidatePathWithJail:
         """validate_path should block paths outside jail."""
         jail = tmp_path / "jail"
         jail.mkdir()
-        set_jail_path(str(jail))
+        mcp.jail_path = str(jail)
 
         outside = tmp_path / "outside"
         outside.mkdir()
@@ -144,7 +167,7 @@ class TestValidatePathWithJail:
         """validate_path should create directories inside jail."""
         jail = tmp_path / "jail"
         jail.mkdir()
-        set_jail_path(str(jail))
+        mcp.jail_path = str(jail)
 
         new_dir = jail / "new_project"
 
@@ -158,7 +181,7 @@ class TestValidatePathWithJail:
         """validate_path should not create directories outside jail."""
         jail = tmp_path / "jail"
         jail.mkdir()
-        set_jail_path(str(jail))
+        mcp.jail_path = str(jail)
 
         new_dir = tmp_path / "outside_new"
 
@@ -174,11 +197,11 @@ class TestValidateRepoPathWithJail:
 
     def setup_method(self) -> None:
         """Reset jail path before each test."""
-        set_jail_path(None)
+        mcp._jail_path = None
 
     def teardown_method(self) -> None:
         """Clean up jail path after each test."""
-        set_jail_path(None)
+        mcp._jail_path = None
 
     def _create_hg_repo(self, path: Path) -> Path:
         """Create a Mercurial repository at the given path."""
@@ -190,7 +213,7 @@ class TestValidateRepoPathWithJail:
         """validate_repo_path should work for repos inside jail."""
         jail = tmp_path / "jail"
         jail.mkdir()
-        set_jail_path(str(jail))
+        mcp.jail_path = str(jail)
 
         repo = self._create_hg_repo(jail / "my_repo")
 
@@ -201,7 +224,7 @@ class TestValidateRepoPathWithJail:
         """validate_repo_path should block repos outside jail."""
         jail = tmp_path / "jail"
         jail.mkdir()
-        set_jail_path(str(jail))
+        mcp.jail_path = str(jail)
 
         outside_repo = self._create_hg_repo(tmp_path / "outside_repo")
 
@@ -216,7 +239,7 @@ class TestValidateRepoPathWithJail:
         """Should block if repo root is outside jail even if subpath is inside."""
         jail = tmp_path / "deep" / "jail"
         jail.mkdir(parents=True)
-        set_jail_path(str(jail))
+        mcp.jail_path = str(jail)
 
         self._create_hg_repo(tmp_path)
 
@@ -229,7 +252,7 @@ class TestValidateRepoPathWithJail:
         """Path traversal should not escape jail."""
         jail = tmp_path / "jail"
         jail.mkdir()
-        set_jail_path(str(jail))
+        mcp.jail_path = str(jail)
 
         escape_repo = self._create_hg_repo(tmp_path / "escape")
 
@@ -244,17 +267,17 @@ class TestJailWithRealHgRepo:
 
     def setup_method(self) -> None:
         """Reset jail path before each test."""
-        set_jail_path(None)
+        mcp._jail_path = None
 
     def teardown_method(self) -> None:
         """Clean up jail path after each test."""
-        set_jail_path(None)
+        mcp._jail_path = None
 
     def test_hg_status_inside_jail(self, tmp_path: Path) -> None:
         """hg_status tool should work with repo inside jail."""
         jail = tmp_path / "jail"
         jail.mkdir()
-        set_jail_path(str(jail))
+        mcp.jail_path = str(jail)
 
         # Create and init repo inside jail
         repo = jail / "test_repo"
@@ -271,7 +294,7 @@ class TestJailWithRealHgRepo:
         """hg_status tool should block access to repo outside jail."""
         jail = tmp_path / "jail"
         jail.mkdir()
-        set_jail_path(str(jail))
+        mcp.jail_path = str(jail)
 
         # Create repo outside jail
         outside_repo = tmp_path / "outside_repo"

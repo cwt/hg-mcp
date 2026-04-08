@@ -118,9 +118,7 @@ def main() -> None:
     try:
         if transports == {"stdio"}:
             if args.jail:
-                from hg_mcp.helpers import set_jail_path
-
-                set_jail_path(args.jail)
+                mcp.jail_path = args.jail
                 print(f"Jail path set to: {args.jail}")
             mcp.run(transport="stdio")
         elif "stdio" in transports:
@@ -133,9 +131,9 @@ def main() -> None:
             from starlette.applications import Starlette
             from starlette.middleware.cors import CORSMiddleware
 
-            from hg_mcp.helpers import APIKeyMiddleware, set_jail_path
+            from hg_mcp.helpers import APIKeyMiddleware
 
-            set_jail_path(args.jail)
+            mcp.jail_path = args.jail
 
             def add_cors(app: Starlette) -> Starlette:
                 """Add CORS middleware to allow browser-based clients."""

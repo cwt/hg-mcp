@@ -11,6 +11,14 @@ hg-mcp MCP server.
 - **MCP Protocol Documentation**: <https://modelcontextprotocol.info/docs/concepts/tools/>
 - **FastMCP GitHub**: <https://github.com/PrefectHQ/fastmcp>
 
+## MCP Server Architecture
+
+This project uses a custom `HG_MCP` subclass of `FastMCP` to provide additional functionality:
+
+- **Jail Path Support**: The `jail_path` property allows restricting repository access to a specific directory tree.
+- **Immutability**: Once `jail_path` is set to a non-None value, it becomes immutable to prevent runtime configuration changes that could bypass security.
+- **Security**: API key validation uses `secrets.compare_digest` to prevent timing attacks.
+
 ## Tool Parameter Ordering
 
 **CRITICAL**: All MCP tools must follow this parameter ordering convention:
@@ -206,7 +214,7 @@ This script:
 - Cleans cache and old coverage files
 - Updates dependencies
 - Runs tests in parallel (uses all CPU cores)
-- Generates coverage report with 50% threshold
+- Generates coverage report with 85% threshold
 - Uses tmpfs on Linux for ~10-100x faster I/O
 
 **Quick test run (no coverage):**

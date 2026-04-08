@@ -6,9 +6,9 @@ and parameter parsing.
 
 import asyncio
 import json
+import secrets
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -33,29 +33,15 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
         provided_key = request.headers.get("x-api-key") or request.headers.get(
             "api-key"
         )
-        if not provided_key or provided_key != self.api_key:
+        if not provided_key or not secrets.compare_digest(
+            provided_key, self.api_key
+        ):
             return JSONResponse(
                 status_code=401,
                 content={"error": "Unauthorized: Invalid or missing API key"},
             )
 
         return await call_next(request)  # type: ignore[operator, no-any-return]
-
-
-# Optional jail path restriction for HTTP transports
-_jail_path: Optional[Path] = None
-
-
-def set_jail_path(path: Optional[str]) -> None:
-    """Set the jail path restriction for repository access.
-
-    When set, all repo_path operations must be within this directory tree.
-    """
-    global _jail_path
-    if path is None:
-        _jail_path = None
-    else:
-        _jail_path = Path(path).absolute()
 
 
 def validate_path_in_jail(path: Path) -> Path:
@@ -70,16 +56,18 @@ def validate_path_in_jail(path: Path) -> Path:
     Raises:
         ValueError: If jail is set and path is outside it.
     """
-    if _jail_path is None:
+    from hg_mcp.server import mcp
+
+    if mcp.jail_path is None:
         return path
 
     resolved = path.resolve()
     try:
-        resolved.relative_to(_jail_path)
+        resolved.relative_to(mcp.jail_path)
     except ValueError:
         raise ValueError(
-            f"Path '{resolved}' is outside the allowed jail directory '{_jail_path}'. "
-            f"Access is restricted to '{_jail_path}' and its subdirectories."
+            f"Path '{resolved}' is outside the allowed jail directory '{mcp.jail_path}'. "
+            f"Access is restricted to '{mcp.jail_path}' and its subdirectories."
         )
 
     return resolved

@@ -428,6 +428,7 @@ async def hg_largefiles(repo_path: str = ".") -> list[TextContent]:
                 file_path = Path(root) / filename
                 rel_path = str(file_path.relative_to(hglf_path))
 
+                size = 0
                 try:
                     content = file_path.read_text(encoding="utf-8").strip()
                     lines = content.split("\n")

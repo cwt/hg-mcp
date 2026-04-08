@@ -15,4 +15,4 @@ pip install -q -e .[speed]
 rm -f poetry.lock && poetry lock --no-cache
 
 # run unit tests
-PYTHONPATH=. poetry run pytest tests/ -n $CPU_CORES --cov=hg_mcp --cov-report=term-missing --cov-fail-under=70
+PYTHONPATH=. poetry run pytest tests/ -n $CPU_CORES --cov=hg_mcp --cov-report=term-missing --cov-fail-under=85
