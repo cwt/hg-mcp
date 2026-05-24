@@ -36,7 +36,9 @@ from hg_mcp.tools.core import (
     hg_remove,
     hg_rename,
     hg_revert,
+    hg_shelve,
     hg_status,
+    hg_unshelve,
     hg_update,
 )
 from hg_mcp.tools.hggit import (
@@ -107,6 +109,7 @@ __all__ = [
     "hg_rename",
     "hg_revert",
     "hg_rewind",
+    "hg_shelve",
     "hg_split",
     "hg_stack",
     "hg_status",
@@ -114,6 +117,7 @@ __all__ = [
     "hg_strip",
     "hg_transplant",
     "hg_uncommit",
+    "hg_unshelve",
     "hg_evolve",
     "hg_update",
     "hg_verify",

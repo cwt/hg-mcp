@@ -412,3 +412,112 @@ async def hg_cat(
     args.append(safe_file)
 
     return await run_hg_command(args, cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_shelve(
+    repo_path: str = ".",
+    name: str = "",
+    files: list[str] | str | None = None,
+    message: str = "",
+    interactive: bool = False,
+) -> str:
+    """Temporarily stash uncommitted changes.
+
+    Requires the 'shelve' extension. Moves uncommitted changes out of
+    the working directory and saves them to a named shelf for later
+    retrieval with `hg_unshelve`.
+
+    Use this to quickly switch context without committing WIP changes.
+
+    Args:
+        repo_path: The repository path
+        name: Name for the shelf (optional; auto-generated if omitted)
+        files: Specific files to shelve (shelves all if omitted)
+        message: Description message for the shelf
+        interactive: Interactively select changes to shelve
+
+    Examples:
+        - hg_shelve() -> Shelve all uncommitted changes
+        - hg_shelve(name="wip-feature") -> Named shelf
+        - hg_shelve(files=["src/main.py"]) -> Shelve specific files
+    """
+    path = validate_repo_path(repo_path)
+    args = ["shelve"]
+
+    if name:
+        try:
+            safe_name = sanitize_input(name, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid shelf name - {e}"
+        args.append(safe_name)
+
+    if message:
+        try:
+            safe_message = sanitize_input(message, max_length=10000)
+        except ValueError as e:
+            return f"Error: Invalid message - {e}"
+        args.extend(["-m", safe_message])
+
+    if interactive:
+        args.append("--interactive")
+
+    files_list = parse_list_param(files)
+    if files_list:
+        args.extend(files_list)
+
+    return await run_hg_command(args, cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_unshelve(
+    repo_path: str = ".",
+    name: str = "",
+    continue_op: bool = False,
+    abort: bool = False,
+    keep: bool = False,
+) -> str:
+    """Restore previously shelved changes.
+
+    Requires the 'shelve' extension. Applies a named shelf back to the
+    working directory. If the application results in conflicts, use
+    `hg_unshelve(continue_op=True)` after resolving, or
+    `hg_unshelve(abort=True)` to cancel.
+
+    Args:
+        repo_path: The repository path
+        name: Shelf name to restore (defaults to most recent)
+        continue_op: Continue after resolving conflicts
+        abort: Abort the unshelve operation
+        keep: Keep the shelf after restoring (don't delete it)
+
+    Examples:
+        - hg_unshelve() -> Restore most recent shelf
+        - hg_unshelve(name="wip-feature") -> Restore named shelf
+        - hg_unshelve(continue_op=True) -> Continue after conflict
+        - hg_unshelve(abort=True) -> Abort unshelve
+    """
+    path = validate_repo_path(repo_path)
+    args = ["unshelve"]
+
+    if continue_op:
+        args.append("--continue")
+        return await run_hg_command(args, cwd=path)
+
+    if abort:
+        args.append("--abort")
+        return await run_hg_command(args, cwd=path)
+
+    if keep:
+        args.append("--keep")
+
+    if name:
+        try:
+            safe_name = sanitize_input(name, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid shelf name - {e}"
+        args.append(safe_name)
+
+    return await run_hg_command(args, cwd=path)

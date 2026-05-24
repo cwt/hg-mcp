@@ -28,8 +28,8 @@ Analysis of standard commands and built-in extensions (enabled/disabled) not yet
 | `metaedit` | evolve | Edit commit metadata (message, user, date, branch) | [x] |
 | `stack` | evolve | Show the current topic stack | [x] |
 | `prune` | evolve | Mark changesets as obsolete (history cleanup) | [x] |
-| `shelve` | shelve | Temporarily stash uncommitted changes |
-| `unshelve` | shelve | Restore previously shelved changes |
+| `shelve` | shelve | Temporarily stash uncommitted changes | [x] |
+| `unshelve` | shelve | Restore previously shelved changes | [x] |
 
 ### Medium Priority
 

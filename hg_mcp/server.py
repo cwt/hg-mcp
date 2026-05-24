@@ -86,6 +86,7 @@ mcp: HG_MCP = HG_MCP(
 - `hg_revert`: Discard uncommitted changes
 - `hg_amend`: Amend current commit; auto-syncs to Git if hg-git enabled
 - `hg_rename`: Rename/move files (like `git mv`)
+- `hg_shelve` / `hg_unshelve`: Stash and restore uncommitted changes
 
 **Branching & Remotes**
 - `hg_branch`: Show/create branches

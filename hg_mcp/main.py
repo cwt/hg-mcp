@@ -57,6 +57,7 @@ from hg_mcp.tools import (  # noqa: F401
     hg_resolve,
     hg_revert,
     hg_rewind,
+    hg_shelve,
     hg_split,
     hg_stack,
     hg_status,
@@ -69,6 +70,7 @@ from hg_mcp.tools import (  # noqa: F401
     hg_topics,
     hg_transplant,
     hg_uncommit,
+    hg_unshelve,
     hg_update,
     hg_verify,
 )
