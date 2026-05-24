@@ -2,7 +2,7 @@
 
 ## v0.9.2 Status (Current)
 
-**Version:** v0.9.2 — 46 tools covering Mercurial 7.1.x operations
+**Version:** v0.9.2 — 62 tools covering Mercurial 7.1.x operations | Coverage: 87%
 
 ---
 

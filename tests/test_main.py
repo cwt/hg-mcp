@@ -6,6 +6,7 @@ Tests for:
 - MCP server configuration
 """
 
+import sys
 from unittest.mock import patch
 
 import pytest
@@ -152,27 +153,22 @@ class TestMainFunction:
     @pytest.mark.asyncio
     async def test_main_calls_setup_event_loop(self) -> None:
         """Test that main() calls setup_event_loop."""
-        with patch("hg_mcp.helpers.setup_event_loop") as mock_setup:
-            with patch.object(mcp, "run") as mock_run:
-                # Mock run to avoid actually starting the server
-                mock_run.return_value = None
-
-                # Call main
-                main()
-
-                # Verify setup_event_loop was called
-                mock_setup.assert_called_once()
+        with patch.object(sys, "argv", ["hg-mcp"]):
+            with patch("hg_mcp.helpers.setup_event_loop") as mock_setup:
+                with patch.object(mcp, "run") as mock_run:
+                    mock_run.return_value = None
+                    main()
+                    mock_setup.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_main_calls_mcp_run_with_stdio(self) -> None:
         """Test that main() calls mcp.run with stdio transport."""
-        with patch("hg_mcp.helpers.setup_event_loop"):
-            with patch.object(mcp, "run") as mock_run:
-                mock_run.return_value = None
-
-                main()
-
-                mock_run.assert_called_once_with(transport="stdio")
+        with patch.object(sys, "argv", ["hg-mcp"]):
+            with patch("hg_mcp.helpers.setup_event_loop"):
+                with patch.object(mcp, "run") as mock_run:
+                    mock_run.return_value = None
+                    main()
+                    mock_run.assert_called_once_with(transport="stdio")
 
     @pytest.mark.asyncio
     async def test_main_execution_order(self) -> None:
@@ -185,9 +181,10 @@ class TestMainFunction:
         def mock_run(**kwargs: object) -> None:
             call_order.append("run")
 
-        with patch("hg_mcp.helpers.setup_event_loop", side_effect=mock_setup):
-            with patch.object(mcp, "run", side_effect=mock_run):
-                main()
+        with patch.object(sys, "argv", ["hg-mcp"]):
+            with patch("hg_mcp.helpers.setup_event_loop", side_effect=mock_setup):
+                with patch.object(mcp, "run", side_effect=mock_run):
+                    main()
 
         assert call_order == ["setup", "run"]
 

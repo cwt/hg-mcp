@@ -6,6 +6,8 @@ Tests for:
 - hg_commit hg-git integration (mocked)
 - hg_amend hg-git integration and message sanitization
 - hg_rename and hg_cat path sanitization
+- hg_clone source sanitization
+- hg_shelve and hg_unshelve (mocked)
 """
 
 from pathlib import Path
@@ -18,10 +20,13 @@ from hg_mcp.helpers import MAX_LOG_LIMIT
 from hg_mcp.tools import (
     hg_amend,
     hg_cat,
+    hg_clone,
     hg_commit,
     hg_diff,
     hg_log,
     hg_rename,
+    hg_shelve,
+    hg_unshelve,
 )
 
 
@@ -122,3 +127,114 @@ class TestHgCoreExtended:
         # Invalid file path
         result = await hg_cat("file.txt;bad", str(hg_repo_with_commits))
         assert "Error: Invalid file path" in result
+
+
+class TestHgClone:
+    """Tests for hg_clone tool."""
+
+    @pytest.mark.asyncio
+    async def test_clone_source_sanitization(self) -> None:
+        """Test hg_clone with dangerous source URL."""
+        result = await hg_clone(source="https://repo; rm -rf /")
+        assert "Error: Invalid source" in result
+
+    @pytest.mark.asyncio
+    async def test_clone_dest_sanitization(self) -> None:
+        """Test hg_clone with dangerous destination path."""
+        result = await hg_clone(source="https://example.com/repo", dest="path;bad")
+        assert "Error: Invalid destination" in result
+
+    @pytest.mark.asyncio
+    async def test_clone_basic(self, temp_dir: Path) -> None:
+        """Test hg_clone from a local repo."""
+        # Create a source repo
+        src_repo = temp_dir / "source"
+        src_repo.mkdir()
+        import subprocess
+
+        subprocess.run(["hg", "init"], cwd=src_repo, check=True, capture_output=True)
+        (src_repo / "README.txt").write_text("test\n")
+        subprocess.run(
+            ["hg", "add", "README.txt"],
+            cwd=src_repo,
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["hg", "commit", "-m", "init"],
+            cwd=src_repo,
+            check=True,
+            capture_output=True,
+        )
+
+        result = await hg_clone(
+            source=str(src_repo), dest=str(temp_dir / "clone-target")
+        )
+        assert not result.startswith("Error")
+
+
+class TestHgShelve:
+    """Tests for hg_shelve and hg_unshelve tools."""
+
+    @pytest.mark.asyncio
+    async def test_shelve_name_sanitization(self, hg_repo: Path) -> None:
+        """Test hg_shelve with dangerous shelf name."""
+        result = await hg_shelve(repo_path=str(hg_repo), name="bad;name")
+        assert "Error: Invalid shelf name" in result
+
+    @pytest.mark.asyncio
+    async def test_shelve_message_sanitization(self, hg_repo: Path) -> None:
+        """Test hg_shelve with dangerous message."""
+        result = await hg_shelve(repo_path=str(hg_repo), message="bad `msg`")
+        assert "Error: Invalid message" in result
+
+    @pytest.mark.asyncio
+    async def test_shelve_basic(self, hg_repo: Path) -> None:
+        """Test hg_shelve basic call with mocked run_hg_command."""
+        with patch("hg_mcp.tools.core.run_hg_command") as mock_run:
+            mock_run.return_value = "shelved as default"
+            result = await hg_shelve(repo_path=str(hg_repo))
+            assert "shelved as default" in result
+
+    @pytest.mark.asyncio
+    async def test_shelve_with_files(self, hg_repo: Path) -> None:
+        """Test hg_shelve with specific files."""
+        with patch("hg_mcp.tools.core.run_hg_command") as mock_run:
+            mock_run.return_value = "shelved as test"
+            result = await hg_shelve(
+                repo_path=str(hg_repo), name="test", files=["file1.txt"]
+            )
+            assert "shelved as test" in result
+
+    @pytest.mark.asyncio
+    async def test_unshelve_continue(self, hg_repo: Path) -> None:
+        """Test hg_unshelve continue operation."""
+        with patch("hg_mcp.tools.core.run_hg_command") as mock_run:
+            mock_run.return_value = "unshelve continue"
+            result = await hg_unshelve(repo_path=str(hg_repo), continue_op=True)
+            assert "unshelve continue" in result
+            mock_run.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_unshelve_abort(self, hg_repo: Path) -> None:
+        """Test hg_unshelve abort operation."""
+        with patch("hg_mcp.tools.core.run_hg_command") as mock_run:
+            mock_run.return_value = "unshelve abort"
+            result = await hg_unshelve(repo_path=str(hg_repo), abort=True)
+            assert "unshelve abort" in result
+
+    @pytest.mark.asyncio
+    async def test_unshelve_basic(self, hg_repo: Path) -> None:
+        """Test hg_unshelve basic call."""
+        with patch("hg_mcp.tools.core.run_hg_command") as mock_run:
+            mock_run.return_value = "unshelved default"
+            result = await hg_unshelve(repo_path=str(hg_repo))
+            assert "unshelved default" in result
+
+    @pytest.mark.asyncio
+    async def test_unshelve_with_name(self, hg_repo: Path) -> None:
+        """Test hg_unshelve with named shelf."""
+        with patch("hg_mcp.tools.core.run_hg_command") as mock_run:
+            mock_run.return_value = "unshelved test"
+            result = await hg_unshelve(repo_path=str(hg_repo), name="test")
+            assert "unshelved test" in result
