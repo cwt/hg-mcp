@@ -100,6 +100,9 @@ mcp: HG_MCP = HG_MCP(
 
 **History Rewriting (Extensions Required)**
 - `hg_absorb`: Auto-amend uncommitted changes into prior commits (requires 'evolve')
+- `hg_fold`: Combine multiple changesets into one (requires 'evolve')
+- `hg_split`: Split a changeset into multiple smaller ones (requires 'evolve')
+- `hg_uncommit`: Uncommit part of a changeset to working dir (requires 'evolve')
 - `hg_rebase`: Rebase changesets (requires 'rebase')
 - `hg_strip`: Remove changesets (requires 'strip')
 - `hg_histedit`: Interactive history editing (requires 'histedit')

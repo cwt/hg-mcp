@@ -31,6 +31,7 @@ from hg_mcp.tools import (  # noqa: F401
     hg_export,
     hg_extensions,
     hg_files,
+    hg_fold,
     hg_git,
     hg_graft,
     hg_heads,
@@ -51,6 +52,7 @@ from hg_mcp.tools import (  # noqa: F401
     hg_rename,
     hg_resolve,
     hg_revert,
+    hg_split,
     hg_status,
     hg_strip,
     hg_summary,
@@ -60,6 +62,7 @@ from hg_mcp.tools import (  # noqa: F401
     hg_topic_current,
     hg_topics,
     hg_transplant,
+    hg_uncommit,
     hg_update,
     hg_verify,
 )

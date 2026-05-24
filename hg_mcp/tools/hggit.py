@@ -295,3 +295,128 @@ async def hg_absorb(repo_path: str = ".") -> str:
     """
     path = validate_repo_path(repo_path)
     return await run_hg_command(["absorb"], cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_fold(
+    revisions: list[str] | str,
+    repo_path: str = ".",
+    message: str = "",
+    exact: bool = False,
+) -> str:
+    """Combine multiple changesets into one.
+
+    Requires the 'evolve' extension. Folds the specified revisions
+    on top of the current working directory parent. The folded result
+    is a single commit with the combined changes.
+
+    Args:
+        revisions: Revisions to fold together (required)
+        repo_path: The repository path
+        message: Commit message for the folded result
+        exact: Fold exactly these revisions (don't include intermediate)
+
+    Examples:
+        - hg_fold(revisions=["abc123", "def456"]) -> Fold two changesets
+    """
+    path = validate_repo_path(repo_path)
+    args = ["fold"]
+
+    if exact:
+        args.append("--exact")
+
+    if message:
+        try:
+            safe_message = sanitize_input(message, max_length=10000)
+        except ValueError as e:
+            return f"Error: Invalid commit message - {e}"
+        args.extend(["-m", safe_message])
+
+    revisions_list = parse_list_param(revisions)
+    if not revisions_list:
+        return "Error: revisions are required for fold."
+
+    for rev in revisions_list:
+        try:
+            safe_rev = sanitize_input(rev, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid revision - {e}"
+        args.extend(["-r", safe_rev])
+
+    return await run_hg_command(args, cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_split(
+    revision: str = "",
+    repo_path: str = ".",
+) -> str:
+    """Split a changeset into multiple smaller ones.
+
+    Requires the 'evolve' extension. Opens an interactive session
+    (via the configured editor) to split the specified revision.
+    Without a revision, splits the current working directory parent.
+
+    Args:
+        revision: Revision to split (defaults to current parent)
+        repo_path: The repository path
+
+    Examples:
+        - hg_split() -> Split current changeset
+        - hg_split(revision="abc123") -> Split specific changeset
+    """
+    path = validate_repo_path(repo_path)
+    args = ["split"]
+
+    if revision:
+        try:
+            safe_revision = sanitize_input(revision, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid revision - {e}"
+        args.extend(["-r", safe_revision])
+
+    return await run_hg_command(args, cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_uncommit(
+    repo_path: str = ".",
+    revisions: list[str] | str | None = None,
+    keep: bool = False,
+) -> str:
+    """Uncommit part of a changeset (move to working directory).
+
+    Requires the 'evolve' extension. Moves changes from the specified
+    changesets into the working directory, effectively "un-committing"
+    them. This is the opposite of commit/amend.
+
+    Args:
+        repo_path: The repository path
+        revisions: Revision(s) to uncommit; use "." for all changes
+        keep: Keep the changeset as an empty commit after uncommitting
+
+    Examples:
+        - hg_uncommit() -> Uncommit current changeset
+        - hg_uncommit(revisions="abc123") -> Uncommit specific changeset
+        - hg_uncommit(revisions=".") -> Uncommit all pending changes
+        - hg_uncommit(keep=True) -> Keep empty commit skeleton
+    """
+    path = validate_repo_path(repo_path)
+    args = ["uncommit"]
+
+    if keep:
+        args.append("--keep")
+
+    revisions_list = parse_list_param(revisions)
+    if revisions_list:
+        for rev in revisions_list:
+            try:
+                safe_rev = sanitize_input(rev, max_length=200)
+            except ValueError as e:
+                return f"Error: Invalid revision - {e}"
+            args.extend(["-r", safe_rev])
+
+    return await run_hg_command(args, cwd=path)

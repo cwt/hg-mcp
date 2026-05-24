@@ -19,9 +19,9 @@ Analysis of standard commands and built-in extensions (enabled/disabled) not yet
 | `graft` | standard | Copy changesets (merge-based cherry-pick, safer than transplant) | [x] |
 | `phases` | standard | Show/set changeset phases (draft/public/secret) | [x] |
 | `absorb` | evolve | Auto-amend uncommitted changes into prior commits | [x] |
-| `fold` | evolve | Combine multiple changesets into one |
-| `split` | evolve | Split a changeset into multiple smaller ones |
-| `uncommit` | evolve | Uncommit part of a changeset (move to working dir) |
+| `fold` | evolve | Combine multiple changesets into one | [x] |
+| `split` | evolve | Split a changeset into multiple smaller ones | [x] |
+| `uncommit` | evolve | Uncommit part of a changeset (move to working dir) | [x] |
 | `next` | evolve | Move to next changeset in topic stack |
 | `previous` | evolve | Move to previous changeset in topic stack |
 | `rewind` | evolve | Recreate changesets that were pruned/evolved (undo) |
