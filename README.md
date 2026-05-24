@@ -9,9 +9,10 @@ A Model Context Protocol (MCP) server for Mercurial repository interaction, writ
 
 ### Core Version Control
 
-- **Initialization**: Create new repositories (`hg_init`)
+- **Repository Creation**: Create new repositories (`hg_init`) or clone existing ones (`hg_clone`)
 - **Status & Diff**: View working directory status (`hg_status`) and line-by-line changes (`hg_diff`)
 - **Commit Management**: Add files (`hg_add`), commit changes (`hg_commit`), remove files (`hg_remove`), and amend the last commit (`hg_amend`)
+- **Stashing**: Temporarily shelve changes (`hg_shelve`) and restore them (`hg_unshelve`)
 - **File Inspection**: View file content at any revision (`hg_cat`) and rename or move files (`hg_rename`)
 
 ### Branching & Navigation
@@ -20,6 +21,7 @@ A Model Context Protocol (MCP) server for Mercurial repository interaction, writ
 - **Named Branches**: Create and list permanent Mercurial branches (`hg_branch`)
 - **Bookmarks**: Manage lightweight, Git-like pointers (`hg_bookmark`, `hg_bookmarks`)
 - **Advanced Topics**: WIP feature isolation with lightweight branches (`hg_topic`, `hg_topics`, `hg_topic_current`)
+- **Phases**: Manage changeset phases for safe history rewriting (`hg_phases`)
 - **Tags**: Create, remove, and list repository tags (`hg_tag`, `hg_tags`)
 
 ### Remote Synchronization
@@ -32,8 +34,10 @@ A Model Context Protocol (MCP) server for Mercurial repository interaction, writ
 ### History Rewriting & Recovery
 
 - **Rebase & Strip**: Move changesets (`hg_rebase`) or permanently remove them (`hg_strip`)
+- **Evolve Toolset**: Auto-amend (`hg_absorb`), fold changesets (`hg_fold`), split changesets (`hg_split`), uncommit (`hg_uncommit`), prune (`hg_prune`), rewind for undo (`hg_rewind`), edit metadata (`hg_metaedit`)
+- **Stack Navigation**: Move through topic stacks (`hg_next`, `hg_previous`, `hg_stack`)
 - **Interactive Editing**: Modify a linear series of changesets non-interactively (`hg_histedit`)
-- **Transplant**: Cherry-pick changesets from other branches (`hg_transplant`)
+- **Graft & Transplant**: Copy changesets via merge machinery (`hg_graft`) or patch-based (`hg_transplant`)
 - **Backout**: Reverse the effects of earlier changesets (`hg_backout`)
 - **Evolve**: Track the evolution of rewritten changesets (`hg_evolve`)
 
@@ -46,6 +50,7 @@ A Model Context Protocol (MCP) server for Mercurial repository interaction, writ
 ### Repository Inspection & Diagnostics
 
 - **Blame/Annotate**: Show line-by-line changeset information (`hg_annotate`)
+- **Bisect**: Binary search for regression-introducing changesets (`hg_bisect`)
 - **File Listing**: List all tracked files in the current revision (`hg_files`)
 - **State Summary**: Get a concise summary of the working directory state (`hg_summary`)
 - **Integrity & Identity**: Verify repository integrity (`hg_verify`) and identify the current revision (`hg_identify`)
@@ -60,7 +65,8 @@ A Model Context Protocol (MCP) server for Mercurial repository interaction, writ
 - **JSON Output**: Automatic JSON formatting for 20+ commands for easy machine parsing
 - **Large File Support**: Management of binaries outside normal history (`hg_largefiles`)
 - **Diagnostics & Help**: List extensions (`hg_extensions`), config (`hg_config`), and access built-in help (`hg_help`)
-- **Reliability**: Comprehensive test suite using tmpfs on Linux for extremely fast verification
+- **Reliability**: 349 tests with 87% coverage, using tmpfs on Linux for extremely fast verification
+- **62 MCP Tools**: Comprehensive coverage of Mercurial 7.1.x standard commands and built-in extensions
 
 ## Installation
 

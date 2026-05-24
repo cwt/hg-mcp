@@ -1,8 +1,16 @@
-# TODO - v0.9.x Development
+# TODO - v0.10.x Development
 
-## v0.9.2 Status (Current)
+## v0.10.0 Status (Current)
 
-**Version:** v0.9.2 — 62 tools covering Mercurial 7.1.x operations | Coverage: 87%
+**Version:** v0.10.0 — 62 tools covering Mercurial 7.1.x operations | Coverage: 87%
+
+### v0.10.0 Changelog
+
+- Added 16 high-priority MCP tools: clone, bisect, graft, phases, absorb, fold, split, uncommit, next, previous, rewind, metaedit, stack, prune, shelve, unshelve
+- All 16 high-priority missing features from TODO.md implemented
+- merge.py reaches 100% coverage, hggit.py 88%, core.py 87%
+- Fixed 3 pre-existing test_main failures (missing sys.argv mock)
+- Added test_hggit_extended.py and test_merge_extended.py
 
 ---
 
