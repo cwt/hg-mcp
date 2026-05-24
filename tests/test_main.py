@@ -29,7 +29,7 @@ class TestMainModule:
     def test_tools_registered(self) -> None:
         """Test that all tools are registered with MCP server."""
         tools = mcp._tool_manager._tools
-        assert len(tools) == 46
+        assert len(tools) == 47
 
     def test_core_tools_registered(self) -> None:
         """Test core tools are registered."""
@@ -114,7 +114,7 @@ class TestMainModule:
     def test_tool_count(self) -> None:
         """Test exact number of tools registered."""
         tools = mcp._tool_manager._tools
-        assert len(tools) == 46
+        assert len(tools) == 47
 
     def test_tool_names_are_strings(self) -> None:
         """Test that all tool names are strings."""
@@ -138,8 +138,7 @@ class TestMainModule:
     def test_instructions_mention_hggit(self) -> None:
         """Test that instructions mention hg-git."""
         assert mcp.instructions and (
-            "hg-git" in mcp.instructions.lower()
-            or "hggit" in mcp.instructions.lower()
+            "hg-git" in mcp.instructions.lower() or "hggit" in mcp.instructions.lower()
         )
 
     def test_instructions_mention_extensions(self) -> None:

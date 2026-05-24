@@ -81,9 +81,7 @@ async def hg_bookmark(
                 if await _is_hggit_enabled(path):
                     is_git_backed, _ = await _check_git_remotes(path)
                     if is_git_backed:
-                        export_result = await run_hg_command(
-                            ["gexport"], cwd=path
-                        )
+                        export_result = await run_hg_command(["gexport"], cwd=path)
                         if not export_result.startswith("Error"):
                             result += "\n\n✓ hg-git: Bookmarks exported to Git branches"
                         else:

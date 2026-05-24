@@ -21,6 +21,7 @@ from hg_mcp.tools import (  # noqa: F401
     hg_bookmarks,
     hg_branch,
     hg_cat,
+    hg_clone,
     hg_commit,
     hg_config,
     hg_diff,
@@ -122,9 +123,7 @@ def main() -> None:
                 print(f"Jail path set to: {args.jail}")
             mcp.run(transport="stdio")
         elif "stdio" in transports:
-            print(
-                "Error: Cannot mix stdio with HTTP transports", file=sys.stderr
-            )
+            print("Error: Cannot mix stdio with HTTP transports", file=sys.stderr)
             sys.exit(1)
         elif transports.issubset({"sse", "streamable-http"}):
             import uvicorn
@@ -204,9 +203,7 @@ def main() -> None:
                 app.add_middleware(APIKeyMiddleware, api_key=args.api_key)
                 print("API key authentication enabled")
 
-            print(
-                f"Starting HG MCP Server with {' and '.join(transports)} transport"
-            )
+            print(f"Starting HG MCP Server with {' and '.join(transports)} transport")
             if "sse" in transports:
                 print(
                     f"SSE endpoint: http://{args.host}:{args.port}{mcp.settings.sse_path}"

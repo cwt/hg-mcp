@@ -28,8 +28,7 @@ def _extract_text(result: str | list[TextContent]) -> str:
     """Extract text from test result (handles both str and list[TextContent])."""
     if isinstance(result, list):
         return "\n".join(
-            item.text if isinstance(item, TextContent) else str(item)
-            for item in result
+            item.text if isinstance(item, TextContent) else str(item) for item in result
         )
     return result
 
@@ -159,9 +158,7 @@ class TestHgExportImportErrors:
     @pytest.mark.asyncio
     async def test_export_invalid_output(self, hg_repo: Path) -> None:
         """Test export with invalid output path."""
-        result = await hg_export(
-            str(hg_repo), revisions=["tip"], output="invalid;path"
-        )
+        result = await hg_export(str(hg_repo), revisions=["tip"], output="invalid;path")
         assert "Error: Invalid output path" in result
 
     @pytest.mark.asyncio

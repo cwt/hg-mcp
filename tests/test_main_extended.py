@@ -164,9 +164,7 @@ class TestServerMain:
 
     @patch("hg_mcp.server.mcp.run")
     @patch("hg_mcp.helpers.setup_event_loop")
-    def test_server_main(
-        self, mock_setup: MagicMock, mock_run: MagicMock
-    ) -> None:
+    def test_server_main(self, mock_setup: MagicMock, mock_run: MagicMock) -> None:
         """Test server.main calls setup and run."""
         from hg_mcp.server import main as server_main
 

@@ -26,8 +26,7 @@ def _extract_text(result: str | list[TextContent]) -> str:
     """Extract text from test result (handles both str and list[TextContent])."""
     if isinstance(result, list):
         return "\n".join(
-            item.text if isinstance(item, TextContent) else str(item)
-            for item in result
+            item.text if isinstance(item, TextContent) else str(item) for item in result
         )
     return result
 
@@ -110,9 +109,7 @@ class TestHgTransplant:
     """Tests for hg_transplant tool (requires transplant extension)."""
 
     @pytest.mark.asyncio
-    async def test_transplant_revision(
-        self, hg_repo_with_branches: Path
-    ) -> None:
+    async def test_transplant_revision(self, hg_repo_with_branches: Path) -> None:
         """Test transplanting a revision (cherry-pick)."""
         # Transplant from feature branch
         result = await hg_transplant(
@@ -178,9 +175,7 @@ class TestHgHistedit:
         assert not result.startswith("Error")
 
     @pytest.mark.asyncio
-    async def test_histedit_drop_command(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_histedit_drop_command(self, hg_repo_with_commits: Path) -> None:
         """Test histedit with 'drop' command - verifies non-interactive behavior."""
         result = await hg_histedit(
             str(hg_repo_with_commits),
@@ -192,9 +187,7 @@ class TestHgHistedit:
         assert not result.startswith("Error")
 
     @pytest.mark.asyncio
-    async def test_histedit_mess_command(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_histedit_mess_command(self, hg_repo_with_commits: Path) -> None:
         """Test histedit with 'mess' command - should not hang.
 
         Verifies that the automatic non-interactive editor prevents hanging
@@ -209,9 +202,7 @@ class TestHgHistedit:
         assert isinstance(result, str)
 
     @pytest.mark.asyncio
-    async def test_histedit_fold_command(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_histedit_fold_command(self, hg_repo_with_commits: Path) -> None:
         """Test histedit with 'fold' command - should not hang.
 
         Verifies that the automatic non-interactive editor prevents hanging

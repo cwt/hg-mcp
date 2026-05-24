@@ -175,9 +175,7 @@ class TestValidatePathWithJail:
         assert result.exists()
         assert result.is_dir()
 
-    def test_validate_path_blocks_create_outside_jail(
-        self, tmp_path: Path
-    ) -> None:
+    def test_validate_path_blocks_create_outside_jail(self, tmp_path: Path) -> None:
         """validate_path should not create directories outside jail."""
         jail = tmp_path / "jail"
         jail.mkdir()
@@ -233,9 +231,7 @@ class TestValidateRepoPathWithJail:
 
         assert "outside the allowed jail" in str(exc_info.value)
 
-    def test_validate_repo_path_parent_outside_jail(
-        self, tmp_path: Path
-    ) -> None:
+    def test_validate_repo_path_parent_outside_jail(self, tmp_path: Path) -> None:
         """Should block if repo root is outside jail even if subpath is inside."""
         jail = tmp_path / "deep" / "jail"
         jail.mkdir(parents=True)
@@ -282,9 +278,7 @@ class TestJailWithRealHgRepo:
         # Create and init repo inside jail
         repo = jail / "test_repo"
         repo.mkdir()
-        subprocess.run(
-            ["hg", "init"], cwd=repo, check=True, capture_output=True
-        )
+        subprocess.run(["hg", "init"], cwd=repo, check=True, capture_output=True)
 
         # This should not raise
         path = validate_repo_path(str(repo))

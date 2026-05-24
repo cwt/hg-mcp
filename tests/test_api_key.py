@@ -24,9 +24,7 @@ def create_test_app() -> Starlette:
     app = Starlette(
         routes=[
             Route("/", homepage),
-            Route(
-                "/api", protected_endpoint, methods=["GET", "POST", "OPTIONS"]
-            ),
+            Route("/api", protected_endpoint, methods=["GET", "POST", "OPTIONS"]),
         ]
     )
     return app
@@ -170,9 +168,7 @@ class TestAPIKeyMiddlewareIntegration:
         with TestClient(app) as client:
             # All requests should require the key
             for _ in range(3):
-                response = client.get(
-                    "/test", headers={"X-API-Key": "test_key"}
-                )
+                response = client.get("/test", headers={"X-API-Key": "test_key"})
                 assert response.status_code == 200
 
     def test_different_endpoints_same_key(self) -> None:

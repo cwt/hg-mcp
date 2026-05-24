@@ -29,8 +29,7 @@ def _extract_text(result: str | list[TextContent]) -> str:
     """Extract text from test result."""
     if isinstance(result, list):
         return "\n".join(
-            item.text if isinstance(item, TextContent) else str(item)
-            for item in result
+            item.text if isinstance(item, TextContent) else str(item) for item in result
         )
     return result
 
@@ -47,9 +46,7 @@ class TestHgCoreExtended:
         assert "Error: limit must be at least 1" in text
 
         # Limit too large
-        result = await hg_log(
-            str(hg_repo_with_commits), limit=MAX_LOG_LIMIT + 1
-        )
+        result = await hg_log(str(hg_repo_with_commits), limit=MAX_LOG_LIMIT + 1)
         text = _extract_text(result)
         assert "Error: limit exceeds maximum allowed value" in text
 
@@ -57,15 +54,11 @@ class TestHgCoreExtended:
     async def test_diff_errors(self, hg_repo_with_commits: Path) -> None:
         """Test hg_diff with invalid inputs."""
         # Invalid revision spec (dangerous chars)
-        result = await hg_diff(
-            str(hg_repo_with_commits), revisions="0..2; rm -rf /"
-        )
+        result = await hg_diff(str(hg_repo_with_commits), revisions="0..2; rm -rf /")
         assert "Error: Invalid revision spec" in result
 
     @pytest.mark.asyncio
-    async def test_commit_hggit_integration(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_commit_hggit_integration(self, hg_repo_with_commits: Path) -> None:
         """Test hg_commit with hg-git integration mocked."""
         with patch("hg_mcp.tools.core._is_hggit_enabled", return_value=True):
             with patch(
@@ -79,17 +72,13 @@ class TestHgCoreExtended:
                         "Export successful",
                     ]
 
-                    result = await hg_commit(
-                        "test message", str(hg_repo_with_commits)
-                    )
+                    result = await hg_commit("test message", str(hg_repo_with_commits))
 
                     assert "hg-git: Bookmarks exported" in result
                     assert mock_run.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_amend_hggit_integration(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_amend_hggit_integration(self, hg_repo_with_commits: Path) -> None:
         """Test hg_amend with hg-git integration mocked."""
         with patch("hg_mcp.tools.core._is_hggit_enabled", return_value=True):
             with patch(
@@ -107,9 +96,7 @@ class TestHgCoreExtended:
                     assert "hg-git: Bookmarks exported" in result
 
     @pytest.mark.asyncio
-    async def test_amend_message_sanitization(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_amend_message_sanitization(self, hg_repo_with_commits: Path) -> None:
         """Test hg_amend with dangerous commit message."""
         result = await hg_amend(
             message="bad message `rm -rf /`",
@@ -118,9 +105,7 @@ class TestHgCoreExtended:
         assert "Error: Invalid commit message" in result
 
     @pytest.mark.asyncio
-    async def test_rename_sanitization(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_rename_sanitization(self, hg_repo_with_commits: Path) -> None:
         """Test hg_rename with dangerous paths."""
         result = await hg_rename(
             "old.txt", "new.txt; rm -rf /", str(hg_repo_with_commits)
@@ -131,9 +116,7 @@ class TestHgCoreExtended:
     async def test_cat_errors(self, hg_repo_with_commits: Path) -> None:
         """Test hg_cat with invalid inputs."""
         # Invalid revision
-        result = await hg_cat(
-            "file.txt", str(hg_repo_with_commits), revision="rev;bad"
-        )
+        result = await hg_cat("file.txt", str(hg_repo_with_commits), revision="rev;bad")
         assert "Error: Invalid revision" in result
 
         # Invalid file path

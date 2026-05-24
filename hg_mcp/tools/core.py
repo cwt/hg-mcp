@@ -33,6 +33,50 @@ async def hg_init(repo_path: str = ".") -> str:
 
 @mcp.tool()
 @handle_repo_errors
+async def hg_clone(
+    source: str,
+    dest: str = "",
+    repo_path: str = ".",
+) -> str:
+    """Clone a repository from a source URL or path.
+
+    Equivalent to 'git clone'. Creates a copy of an existing repository.
+
+    Supports cloning from local paths, HTTP/HTTPS URLs, SSH URLs,
+    and Git repositories (via hg-git with git+ prefix).
+
+    Args:
+        source: Source URL or path to clone from
+        dest: Destination directory (defaults to basename of source)
+        repo_path: Base directory for the clone (default: current directory)
+
+    Examples:
+        - hg_clone(source="https://example.com/repo") -> Clone to ./repo
+        - hg_clone(source="/path/to/repo", dest="my-copy") -> Clone to my-copy
+        - hg_clone(source="git+https://github.com/user/repo.git") -> Git clone
+    """
+    path = validate_path(repo_path, create_if_missing=True)
+    args = ["clone"]
+
+    # Sanitize source
+    try:
+        safe_source = sanitize_input(source, max_length=2000)
+    except ValueError as e:
+        return f"Error: Invalid source - {e}"
+    args.append(safe_source)
+
+    if dest:
+        try:
+            safe_dest = sanitize_input(dest, max_length=500)
+        except ValueError as e:
+            return f"Error: Invalid destination - {e}"
+        args.append(safe_dest)
+
+    return await run_hg_command(args, cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
 @json_tool
 async def hg_status(repo_path: str = ".") -> list[TextContent]:
     """Show the status of files in the working directory.
@@ -290,13 +334,9 @@ async def hg_amend(
                 if is_git_backed:
                     export_result = await run_hg_command(["gexport"], cwd=path)
                     if not export_result.startswith("Error"):
-                        result += (
-                            "\n\n✓ hg-git: Bookmarks exported to Git branches"
-                        )
+                        result += "\n\n✓ hg-git: Bookmarks exported to Git branches"
                     else:
-                        result += (
-                            f"\n\nNote: hg gexport skipped - {export_result}"
-                        )
+                        result += f"\n\nNote: hg gexport skipped - {export_result}"
         except Exception as e:
             result += f"\n\nNote: hg-git integration check failed: {e}"
 

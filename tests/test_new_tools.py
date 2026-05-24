@@ -263,19 +263,13 @@ class TestHgBookmark:
     async def test_bookmark_invalid_name(self, hg_repo: Path) -> None:
         """Test creating bookmark with invalid name."""
         # Very long name should fail
-        result = await hg_bookmark(
-            name="a" * 300, repo_path=str(hg_repo), revision=""
-        )
+        result = await hg_bookmark(name="a" * 300, repo_path=str(hg_repo), revision="")
         assert "Error" in result or "invalid" in result.lower()
 
     @pytest.mark.asyncio
-    async def test_bookmark_with_dangerous_characters(
-        self, hg_repo: Path
-    ) -> None:
+    async def test_bookmark_with_dangerous_characters(self, hg_repo: Path) -> None:
         """Test bookmark name with dangerous characters is rejected."""
-        result = await hg_bookmark(
-            name="test`rm", repo_path=str(hg_repo), revision=""
-        )
+        result = await hg_bookmark(name="test`rm", repo_path=str(hg_repo), revision="")
         assert "Error" in result
 
 
@@ -283,32 +277,24 @@ class TestHgAmend:
     """Tests for hg_amend tool."""
 
     @pytest.mark.asyncio
-    async def test_amend_without_message(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_amend_without_message(self, hg_repo_with_commits: Path) -> None:
         """Test amending without changing message."""
         # Make a change to amend
         test_file = hg_repo_with_commits / "amend_test.txt"
         test_file.write_text("Change to amend\n", encoding="utf-8")
-        await hg_add(
-            files=["amend_test.txt"], repo_path=str(hg_repo_with_commits)
-        )
+        await hg_add(files=["amend_test.txt"], repo_path=str(hg_repo_with_commits))
 
         result = await hg_amend(repo_path=str(hg_repo_with_commits))
         # hg commit --amend may return empty string on success
         assert isinstance(result, str)
 
     @pytest.mark.asyncio
-    async def test_amend_with_new_message(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_amend_with_new_message(self, hg_repo_with_commits: Path) -> None:
         """Test amending with new commit message."""
         # Make a change to amend
         test_file = hg_repo_with_commits / "amend_msg_test.txt"
         test_file.write_text("Change\n", encoding="utf-8")
-        await hg_add(
-            files=["amend_msg_test.txt"], repo_path=str(hg_repo_with_commits)
-        )
+        await hg_add(files=["amend_msg_test.txt"], repo_path=str(hg_repo_with_commits))
 
         result = await hg_amend(
             message="Amended: new message", repo_path=str(hg_repo_with_commits)
@@ -330,19 +316,13 @@ class TestHgCat:
     """Tests for hg_cat tool."""
 
     @pytest.mark.asyncio
-    async def test_cat_current_revision(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_cat_current_revision(self, hg_repo_with_commits: Path) -> None:
         """Test showing file at current parent revision."""
-        result = await hg_cat(
-            file="README.txt", repo_path=str(hg_repo_with_commits)
-        )
+        result = await hg_cat(file="README.txt", repo_path=str(hg_repo_with_commits))
         assert "Initial commit" in result or "README" in result
 
     @pytest.mark.asyncio
-    async def test_cat_specific_revision(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_cat_specific_revision(self, hg_repo_with_commits: Path) -> None:
         """Test showing file at specific revision."""
         result = await hg_cat(
             file="file2.txt", repo_path=str(hg_repo_with_commits), revision="2"
@@ -358,9 +338,7 @@ class TestHgCat:
     @pytest.mark.asyncio
     async def test_cat_invalid_file_path(self, hg_repo: Path) -> None:
         """Test cat with invalid file path (dangerous characters)."""
-        result = await hg_cat(
-            file="test`rm.txt", repo_path=str(hg_repo), revision=""
-        )
+        result = await hg_cat(file="test`rm.txt", repo_path=str(hg_repo), revision="")
         assert "Error" in result or "invalid" in result.lower()
 
     @pytest.mark.asyncio

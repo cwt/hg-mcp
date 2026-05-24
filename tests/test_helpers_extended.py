@@ -72,9 +72,7 @@ class TestHelpersExtended:
     @pytest.mark.asyncio
     async def test_run_hg_command_not_found(self) -> None:
         """Test run_hg_command when hg is not found."""
-        with patch(
-            "asyncio.create_subprocess_exec", side_effect=FileNotFoundError
-        ):
+        with patch("asyncio.create_subprocess_exec", side_effect=FileNotFoundError):
             result = await run_hg_command(["status"])
             assert "Mercurial (hg) command not found" in result
 
@@ -124,20 +122,14 @@ class TestHelpersExtended:
     async def test_get_git_branches_json_error(self, tmp_path: Path) -> None:
         """Test _get_git_branches when JSON parsing fails."""
         with patch("hg_mcp.helpers.run_hg_command", return_value="[not json"):
-            git_branches, local_bookmarks = await _get_git_branches(
-                tmp_path, ".git"
-            )
+            git_branches, local_bookmarks = await _get_git_branches(tmp_path, ".git")
             assert git_branches == []
             assert local_bookmarks == []
 
     @pytest.mark.asyncio
     async def test_get_git_branches_no_bookmarks(self, tmp_path: Path) -> None:
         """Test _get_git_branches when no bookmarks exist."""
-        with patch(
-            "hg_mcp.helpers.run_hg_command", return_value="no bookmarks set"
-        ):
-            git_branches, local_bookmarks = await _get_git_branches(
-                tmp_path, ".git"
-            )
+        with patch("hg_mcp.helpers.run_hg_command", return_value="no bookmarks set"):
+            git_branches, local_bookmarks = await _get_git_branches(tmp_path, ".git")
             assert git_branches == []
             assert local_bookmarks == []

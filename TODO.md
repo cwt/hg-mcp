@@ -14,7 +14,7 @@ Analysis of standard commands and built-in extensions (enabled/disabled) not yet
 
 | Command | Source | Description |
 |---|---|---|
-| `clone` | standard | Copy a repository |
+| `clone` | standard | Copy a repository | [x] |
 | `bisect` | standard | Binary search for regression-introducing changeset |
 | `graft` | standard | Copy changesets (merge-based cherry-pick, safer than transplant) |
 | `phases` | standard | Show/set changeset phases (draft/public/secret) |

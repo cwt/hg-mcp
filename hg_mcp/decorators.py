@@ -97,9 +97,7 @@ def handle_repo_errors(
                     TextContent(
                         type="text",
                         text=error_msg,
-                        annotations=AnnotationsType(
-                            audience=["user"], priority=1.0
-                        ),
+                        annotations=AnnotationsType(audience=["user"], priority=1.0),
                     )
                 ]
             return error_msg

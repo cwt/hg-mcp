@@ -76,6 +76,7 @@ mcp: HG_MCP = HG_MCP(
 
 **Core Operations**
 - `hg_init`: Create a new repository (like `git init`)
+- `hg_clone`: Clone a repository from a URL or path (like `git clone`)
 - `hg_status`: Working directory status (JSON output)
 - `hg_log`: Commit history (JSON, default limit 10)
 - `hg_diff`: Uncommitted changes or revision diffs (e.g., "500..510", "v1.0..tip")

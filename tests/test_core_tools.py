@@ -37,8 +37,7 @@ def _extract_text(result: str | list[TextContent]) -> str:
     if isinstance(result, list):
         # Extract text from TextContent objects
         return "\n".join(
-            item.text if isinstance(item, TextContent) else str(item)
-            for item in result
+            item.text if isinstance(item, TextContent) else str(item) for item in result
         )
     return result
 
@@ -55,24 +54,14 @@ class TestHgAnnotate:
     """Tests for hg_annotate tool."""
 
     @pytest.mark.asyncio
-    async def test_annotate_single_file(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_annotate_single_file(self, hg_repo_with_commits: Path) -> None:
         """Test annotating a single file."""
-        result = await hg_annotate(
-            str(hg_repo_with_commits), files=["README.txt"]
-        )
+        result = await hg_annotate(str(hg_repo_with_commits), files=["README.txt"])
         text = _extract_text(result)
-        assert (
-            "Test User" in text
-            or "test@example.com" in text
-            or "Initial" in text
-        )
+        assert "Test User" in text or "test@example.com" in text or "Initial" in text
 
     @pytest.mark.asyncio
-    async def test_annotate_with_revision(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_annotate_with_revision(self, hg_repo_with_commits: Path) -> None:
         """Test annotating with specific revision."""
         result = await hg_annotate(
             str(hg_repo_with_commits), revision="2", files=["file2.txt"]
@@ -81,13 +70,9 @@ class TestHgAnnotate:
         assert text  # Should not be empty
 
     @pytest.mark.asyncio
-    async def test_annotate_specific_file(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_annotate_specific_file(self, hg_repo_with_commits: Path) -> None:
         """Test annotating a specific file."""
-        result = await hg_annotate(
-            str(hg_repo_with_commits), files=["file2.txt"]
-        )
+        result = await hg_annotate(str(hg_repo_with_commits), files=["file2.txt"])
         text = _extract_text(result)
         assert "file2.txt" in text or "Content 2" in text
 
@@ -96,9 +81,7 @@ class TestHgBackout:
     """Tests for hg_backout tool."""
 
     @pytest.mark.asyncio
-    async def test_backout_without_merge(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_backout_without_merge(self, hg_repo_with_commits: Path) -> None:
         """Test backing out a changeset without automatic merge."""
         # Backout revision 3 without committing (no-commit mode)
         result = await hg_backout("3", str(hg_repo_with_commits))
@@ -386,9 +369,7 @@ class TestHgFiles:
     """Tests for hg_files tool."""
 
     @pytest.mark.asyncio
-    async def test_files_lists_tracked(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_files_lists_tracked(self, hg_repo_with_commits: Path) -> None:
         """Test that files lists all tracked files."""
         result = await hg_files(str(hg_repo_with_commits))
         text = _extract_text(result)
@@ -400,18 +381,14 @@ class TestHgSummary:
     """Tests for hg_summary tool."""
 
     @pytest.mark.asyncio
-    async def test_summary_shows_branch(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_summary_shows_branch(self, hg_repo_with_commits: Path) -> None:
         """Test that summary shows current branch."""
         result = await hg_summary(str(hg_repo_with_commits))
         text = _extract_text(result)
         assert "default" in text or "branch" in text.lower()
 
     @pytest.mark.asyncio
-    async def test_summary_shows_parent(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_summary_shows_parent(self, hg_repo_with_commits: Path) -> None:
         """Test that summary shows parent revision."""
         result = await hg_summary(str(hg_repo_with_commits))
         text = _extract_text(result)
@@ -435,9 +412,7 @@ class TestHgIdentify:
     """Tests for hg_identify tool."""
 
     @pytest.mark.asyncio
-    async def test_identify_current_revision(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_identify_current_revision(self, hg_repo_with_commits: Path) -> None:
         """Test identifying current working directory revision."""
         result = await hg_identify(str(hg_repo_with_commits))
         text = _extract_text(result)
@@ -445,9 +420,7 @@ class TestHgIdentify:
         assert text
 
     @pytest.mark.asyncio
-    async def test_identify_specific_revision(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_identify_specific_revision(self, hg_repo_with_commits: Path) -> None:
         """Test identifying a specific revision."""
         result = await hg_identify(str(hg_repo_with_commits), revision="2")
         text = _extract_text(result)
@@ -458,27 +431,21 @@ class TestHgDiff:
     """Tests for hg_diff tool."""
 
     @pytest.mark.asyncio
-    async def test_diff_working_directory(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_diff_working_directory(self, hg_repo_with_commits: Path) -> None:
         """Test diff of working directory (no revisions specified)."""
         result = await hg_diff(str(hg_repo_with_commits))
         text = _extract_text(result)
         assert isinstance(text, str)
 
     @pytest.mark.asyncio
-    async def test_diff_with_revision_spec(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_diff_with_revision_spec(self, hg_repo_with_commits: Path) -> None:
         """Test diff with revision spec (e.g., '0..2')."""
         result = await hg_diff(str(hg_repo_with_commits), revisions="0..2")
         text = _extract_text(result)
         assert text
 
     @pytest.mark.asyncio
-    async def test_diff_single_revision(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_diff_single_revision(self, hg_repo_with_commits: Path) -> None:
         """Test diff with single revision."""
         result = await hg_diff(str(hg_repo_with_commits), revisions="1")
         text = _extract_text(result)
@@ -510,9 +477,7 @@ class TestHgDiff:
         assert "modified content" in text or "initial content" in text
 
     @pytest.mark.asyncio
-    async def test_diff_with_multiple_files(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_diff_with_multiple_files(self, hg_repo_with_commits: Path) -> None:
         """Test diff with multiple files."""
         result = await hg_diff(
             str(hg_repo_with_commits), files=["file1.txt", "file2.txt"]

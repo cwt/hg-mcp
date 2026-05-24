@@ -36,8 +36,7 @@ def _extract_text(result: str | list[TextContent]) -> str:
     """Extract text from test result."""
     if isinstance(result, list):
         return "\n".join(
-            item.text if isinstance(item, TextContent) else str(item)
-            for item in result
+            item.text if isinstance(item, TextContent) else str(item) for item in result
         )
     return result
 
@@ -83,9 +82,7 @@ class TestHgTag:
     @pytest.mark.asyncio
     async def test_tag_create(self, hg_repo_with_commits: Path) -> None:
         """Test creating a new tag."""
-        result = await hg_tag(
-            name="v1.0.0-test", repo_path=str(hg_repo_with_commits)
-        )
+        result = await hg_tag(name="v1.0.0-test", repo_path=str(hg_repo_with_commits))
         # hg tag auto-commits, may return empty string on success
         assert isinstance(result, str)
 
@@ -95,9 +92,7 @@ class TestHgTag:
         assert "v1.0.0-test" in text
 
     @pytest.mark.asyncio
-    async def test_tag_create_at_revision(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_tag_create_at_revision(self, hg_repo_with_commits: Path) -> None:
         """Test creating tag at specific revision."""
         result = await hg_tag(
             name="v0.5.0", repo_path=str(hg_repo_with_commits), revision="2"
@@ -153,13 +148,9 @@ class TestHgPush:
         assert result
 
     @pytest.mark.asyncio
-    async def test_push_unknown_destination(
-        self, hg_repo_with_remote: Path
-    ) -> None:
+    async def test_push_unknown_destination(self, hg_repo_with_remote: Path) -> None:
         """Test pushing to unknown destination shows available remotes."""
-        result = await hg_push(
-            str(hg_repo_with_remote), destination="nonexistent"
-        )
+        result = await hg_push(str(hg_repo_with_remote), destination="nonexistent")
         # Should include available remotes hint
         assert "Error" in result
 
@@ -256,14 +247,10 @@ class TestHgTopicCurrent:
     """Tests for hg_topic_current tool."""
 
     @pytest.mark.asyncio
-    async def test_topic_current_active(
-        self, hg_repo_with_extensions: Path
-    ) -> None:
+    async def test_topic_current_active(self, hg_repo_with_extensions: Path) -> None:
         """Test getting current active topic."""
         # Create a topic
-        await hg_topic(
-            name="current-test", repo_path=str(hg_repo_with_extensions)
-        )
+        await hg_topic(name="current-test", repo_path=str(hg_repo_with_extensions))
 
         result = await hg_topic_current(repo_path=str(hg_repo_with_extensions))
         text = _extract_text(result)
@@ -283,9 +270,7 @@ class TestJsonToolDecorator:
         assert result[0].type == "text"
 
     @pytest.mark.asyncio
-    async def test_json_tool_output_is_json(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_json_tool_output_is_json(self, hg_repo_with_commits: Path) -> None:
         """Test that json_tool output is valid JSON."""
         result = await hg_bookmarks(str(hg_repo_with_commits))
         text = _extract_text(result)
@@ -298,9 +283,7 @@ class TestHandleRepoErrorsDecorator:
     """Tests for @handle_repo_errors decorator."""
 
     @pytest.mark.asyncio
-    async def test_handle_repo_errors_invalid_path(
-        self, temp_dir: Path
-    ) -> None:
+    async def test_handle_repo_errors_invalid_path(self, temp_dir: Path) -> None:
         """Test that invalid repo path returns proper error."""
         nonexistent = temp_dir / "nonexistent-repo"
         result = await hg_bookmark(str(nonexistent))
@@ -321,18 +304,14 @@ class TestHgBookmarksJson:
     """Tests for hg_bookmarks JSON output."""
 
     @pytest.mark.asyncio
-    async def test_bookmarks_json_parseable(
-        self, hg_repo_with_bookmarks: Path
-    ) -> None:
+    async def test_bookmarks_json_parseable(self, hg_repo_with_bookmarks: Path) -> None:
         """Test that bookmarks output is valid JSON."""
         result = await hg_bookmarks(str(hg_repo_with_bookmarks))
         data = _extract_json(result)
         assert isinstance(data, list)
 
     @pytest.mark.asyncio
-    async def test_bookmarks_contains_names(
-        self, hg_repo_with_bookmarks: Path
-    ) -> None:
+    async def test_bookmarks_contains_names(self, hg_repo_with_bookmarks: Path) -> None:
         """Test that bookmarks output contains bookmark names."""
         result = await hg_bookmarks(str(hg_repo_with_bookmarks))
         text = _extract_text(result)
@@ -372,9 +351,7 @@ class TestHgPathsJson:
     """Tests for hg_paths JSON output."""
 
     @pytest.mark.asyncio
-    async def test_paths_json_parseable(
-        self, hg_repo_with_remote: Path
-    ) -> None:
+    async def test_paths_json_parseable(self, hg_repo_with_remote: Path) -> None:
         """Test that paths output is valid JSON."""
         result = await hg_paths(str(hg_repo_with_remote))
         data = _extract_json(result)

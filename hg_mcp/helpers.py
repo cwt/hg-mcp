@@ -37,9 +37,7 @@ class APIKeyMiddleware:
         # Check API key from headers
         # Headers in scope are a list of (name, value) tuples as bytes
         headers = dict(scope.get("headers", []))
-        provided_key_bytes = headers.get(b"x-api-key") or headers.get(
-            b"api-key"
-        )
+        provided_key_bytes = headers.get(b"x-api-key") or headers.get(b"api-key")
 
         is_authorized = False
         if provided_key_bytes:
@@ -188,9 +186,7 @@ def sanitize_input(value: str, max_length: int = 1000) -> str:
     dangerous_patterns = ["`", "$(", "${", "|", ";", "&&", "||", ">", "<", "&"]
     for pattern in dangerous_patterns:
         if pattern in value:
-            raise ValueError(
-                f"Input contains invalid character sequence: {pattern}"
-            )
+            raise ValueError(f"Input contains invalid character sequence: {pattern}")
 
     return value
 
@@ -402,9 +398,7 @@ async def run_hg_command(
         return output
 
     except FileNotFoundError:
-        return (
-            "Error: Mercurial (hg) command not found. Please install Mercurial."
-        )
+        return "Error: Mercurial (hg) command not found. Please install Mercurial."
     except Exception as e:
         return f"Error executing hg command: {e}"
 

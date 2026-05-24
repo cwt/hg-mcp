@@ -202,16 +202,12 @@ class TestGetGitBranches:
     @pytest.mark.asyncio
     async def test_no_bookmarks(self, hg_repo: Path) -> None:
         """Test repo without bookmarks."""
-        git_branches, local_bookmarks = await _get_git_branches(
-            hg_repo, suffix=None
-        )
+        git_branches, local_bookmarks = await _get_git_branches(hg_repo, suffix=None)
         assert git_branches == []
         assert local_bookmarks == []
 
     @pytest.mark.asyncio
-    async def test_with_bookmarks_no_suffix(
-        self, hg_repo_with_bookmarks: Path
-    ) -> None:
+    async def test_with_bookmarks_no_suffix(self, hg_repo_with_bookmarks: Path) -> None:
         """Test bookmarks without suffix configured."""
         git_branches, local_bookmarks = await _get_git_branches(
             hg_repo_with_bookmarks, suffix=None
@@ -244,9 +240,7 @@ class TestGetGitBranches:
     @pytest.mark.asyncio
     async def test_no_bookmarks_set_message(self, hg_repo: Path) -> None:
         """Test handling 'no bookmarks set' message."""
-        git_branches, local_bookmarks = await _get_git_branches(
-            hg_repo, suffix=None
-        )
+        git_branches, local_bookmarks = await _get_git_branches(hg_repo, suffix=None)
         assert git_branches == []
         assert local_bookmarks == []
 
@@ -282,9 +276,7 @@ class TestHgRebase:
         assert "rebase" in result.lower()
 
     @pytest.mark.asyncio
-    async def test_rebase_with_extension(
-        self, hg_repo_with_extensions: Path
-    ) -> None:
+    async def test_rebase_with_extension(self, hg_repo_with_extensions: Path) -> None:
         """Test rebase with extension enabled but no changes to rebase."""
         # This should work but may have no effect
         result = await hg_rebase(
@@ -308,9 +300,7 @@ class TestHgRebase:
         assert isinstance(result, str)
 
     @pytest.mark.asyncio
-    async def test_rebase_with_collapse(
-        self, hg_repo_with_extensions: Path
-    ) -> None:
+    async def test_rebase_with_collapse(self, hg_repo_with_extensions: Path) -> None:
         """Test rebase with collapse option."""
         result = await hg_rebase(
             repo_path=str(hg_repo_with_extensions),
@@ -319,9 +309,7 @@ class TestHgRebase:
         assert isinstance(result, str)
 
     @pytest.mark.asyncio
-    async def test_rebase_with_keep(
-        self, hg_repo_with_extensions: Path
-    ) -> None:
+    async def test_rebase_with_keep(self, hg_repo_with_extensions: Path) -> None:
         """Test rebase with keep option."""
         result = await hg_rebase(
             repo_path=str(hg_repo_with_extensions),
@@ -341,9 +329,7 @@ class TestHgStrip:
         assert "strip" in result.lower()
 
     @pytest.mark.asyncio
-    async def test_strip_with_extension(
-        self, hg_repo_with_extensions: Path
-    ) -> None:
+    async def test_strip_with_extension(self, hg_repo_with_extensions: Path) -> None:
         """Test strip with extension enabled."""
         # Strip tip with keep (safer)
         result = await hg_strip(
@@ -355,9 +341,7 @@ class TestHgStrip:
         assert isinstance(result, str)
 
     @pytest.mark.asyncio
-    async def test_strip_without_keep(
-        self, hg_repo_with_extensions: Path
-    ) -> None:
+    async def test_strip_without_keep(self, hg_repo_with_extensions: Path) -> None:
         """Test strip without keep option."""
         result = await hg_strip(
             revision="tip",
@@ -367,9 +351,7 @@ class TestHgStrip:
         assert isinstance(result, str)
 
     @pytest.mark.asyncio
-    async def test_strip_invalid_revision(
-        self, hg_repo_with_extensions: Path
-    ) -> None:
+    async def test_strip_invalid_revision(self, hg_repo_with_extensions: Path) -> None:
         """Test strip with invalid revision."""
         result = await hg_strip(
             revision="99999",
@@ -423,9 +405,7 @@ class TestHgTransplant:
         assert isinstance(result, str)
 
     @pytest.mark.asyncio
-    async def test_transplant_with_source(
-        self, hg_repo_with_extensions: Path
-    ) -> None:
+    async def test_transplant_with_source(self, hg_repo_with_extensions: Path) -> None:
         """Test transplant with source parameter."""
         result = await hg_transplant(
             revisions=["tip"],
@@ -468,9 +448,7 @@ class TestHgEvolve:
         assert isinstance(result, str)
 
     @pytest.mark.asyncio
-    async def test_evolve_with_extension(
-        self, hg_repo_with_extensions: Path
-    ) -> None:
+    async def test_evolve_with_extension(self, hg_repo_with_extensions: Path) -> None:
         """Test evolve with extension enabled."""
         # May return empty if no evolution history
         result = await hg_evolve(repo_path=str(hg_repo_with_extensions))
@@ -481,9 +459,7 @@ class TestHgRebaseIntegration:
     """Integration tests for hg_rebase."""
 
     @pytest.mark.asyncio
-    async def test_rebase_with_no_changes(
-        self, hg_repo_with_extensions: Path
-    ) -> None:
+    async def test_rebase_with_no_changes(self, hg_repo_with_extensions: Path) -> None:
         """Test rebase when there's nothing to rebase."""
         # Just verify rebase command works with extension
         result = await hg_rebase(
@@ -497,9 +473,7 @@ class TestHgStripIntegration:
     """Integration tests for hg_strip."""
 
     @pytest.mark.asyncio
-    async def test_strip_and_verify(
-        self, hg_repo_with_extensions: Path
-    ) -> None:
+    async def test_strip_and_verify(self, hg_repo_with_extensions: Path) -> None:
         """Test strip and verify it worked."""
         # Get current tip
         result_before = await hg_strip(

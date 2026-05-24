@@ -115,9 +115,7 @@ class TestGetGitBranches:
     @pytest.mark.asyncio
     async def test_get_git_branches_empty_repo(self, hg_repo: Path) -> None:
         """Test getting git branches from repo without bookmarks."""
-        git_branches, local_bookmarks = await _get_git_branches(
-            hg_repo, suffix=".git"
-        )
+        git_branches, local_bookmarks = await _get_git_branches(hg_repo, suffix=".git")
         assert git_branches == []
         assert local_bookmarks == []
 
@@ -126,20 +124,14 @@ class TestRunHgCommandWithJson:
     """Tests for run_hg_command with JSON output."""
 
     @pytest.mark.asyncio
-    async def test_run_command_with_json(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_run_command_with_json(self, hg_repo_with_commits: Path) -> None:
         """Test running command with automatic JSON output."""
-        result = await run_hg_command(
-            ["log", "--limit", "2"], cwd=hg_repo_with_commits
-        )
+        result = await run_hg_command(["log", "--limit", "2"], cwd=hg_repo_with_commits)
         # Should be JSON formatted
         assert result.startswith("[")
 
     @pytest.mark.asyncio
-    async def test_run_command_without_json(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_run_command_without_json(self, hg_repo_with_commits: Path) -> None:
         """Test running command without JSON output."""
         result = await run_hg_command(
             ["log", "--limit", "1"], cwd=hg_repo_with_commits, use_json=False
@@ -171,9 +163,7 @@ class TestRunHgCommandErrors:
     @pytest.mark.asyncio
     async def test_run_command_with_invalid_args(self, hg_repo: Path) -> None:
         """Test error with invalid arguments."""
-        result = await run_hg_command(
-            ["log", "--invalid-flag-xyz"], cwd=hg_repo
-        )
+        result = await run_hg_command(["log", "--invalid-flag-xyz"], cwd=hg_repo)
         assert "Error" in result
 
 
@@ -181,17 +171,13 @@ class TestMergeToolOutput:
     """Tests verifying merge tool output format."""
 
     @pytest.mark.asyncio
-    async def test_merge_returns_string(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_merge_returns_string(self, hg_repo_with_commits: Path) -> None:
         """Test that merge returns string output."""
         result = await hg_merge(repo_path=str(hg_repo_with_commits))
         assert isinstance(result, str)
 
     @pytest.mark.asyncio
-    async def test_resolve_returns_list(
-        self, hg_repo_with_commits: Path
-    ) -> None:
+    async def test_resolve_returns_list(self, hg_repo_with_commits: Path) -> None:
         """Test that resolve returns list[TextContent] output."""
         result = await hg_resolve(repo_path=str(hg_repo_with_commits))
         # hg_resolve uses @json_tool decorator, returns list[TextContent]
