@@ -5,7 +5,9 @@ Provides tools for working with hg-git extension for Git-backed repositories.
 
 from pathlib import Path
 
-from hg_mcp.decorators import handle_repo_errors
+from mcp.types import TextContent
+
+from hg_mcp.decorators import handle_repo_errors, json_tool
 from hg_mcp.helpers import (
     GIT_REMOTE_PATTERNS,
     parse_list_param,
@@ -418,5 +420,197 @@ async def hg_uncommit(
             except ValueError as e:
                 return f"Error: Invalid revision - {e}"
             args.extend(["-r", safe_rev])
+
+    return await run_hg_command(args, cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_next(repo_path: str = ".") -> str:
+    """Move to the next changeset in the topic stack.
+
+    Requires the 'evolve' (topic) extension. Navigates forward through
+    changesets in the current topic stack. Works with --evolve to move
+    forward while resolving instability.
+
+    Use `hg_stack` to see the current topic stack.
+    """
+    path = validate_repo_path(repo_path)
+    return await run_hg_command(["next"], cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_previous(repo_path: str = ".") -> str:
+    """Move to the previous changeset in the topic stack.
+
+    Requires the 'evolve' (topic) extension. Navigates backward through
+    changesets in the current topic stack.
+
+    Use `hg_stack` to see the current topic stack.
+    """
+    path = validate_repo_path(repo_path)
+    return await run_hg_command(["previous"], cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_rewind(
+    revisions: list[str] | str,
+    repo_path: str = ".",
+    keep: bool = False,
+) -> str:
+    """Recreate changesets that were pruned, stripped, or evolved away.
+
+    Requires the 'evolve' extension. Rewinds history to bring back
+    changesets that have been obsoleted. This is the undo command for
+    prune, strip, amend, and evolve operations.
+
+    Args:
+        revisions: Revision(s) to rewind back from (required)
+        repo_path: The repository path
+        keep: Keep the original pruned changesets as obsolete
+
+    Examples:
+        - hg_rewind(revisions="abc123") -> Bring back pruned changeset
+        - hg_rewind(revisions="abc123", keep=True) -> Keep original too
+    """
+    path = validate_repo_path(repo_path)
+    args = ["rewind"]
+
+    if keep:
+        args.append("--keep")
+
+    revisions_list = parse_list_param(revisions)
+    if not revisions_list:
+        return "Error: revisions are required for rewind."
+
+    for rev in revisions_list:
+        try:
+            safe_rev = sanitize_input(rev, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid revision - {e}"
+        args.extend(["-r", safe_rev])
+
+    return await run_hg_command(args, cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_metaedit(
+    repo_path: str = ".",
+    revision: str = "",
+    message: str = "",
+    user: str = "",
+    date: str = "",
+    fold: bool = False,
+) -> str:
+    """Edit commit metadata (message, user, date, branch).
+
+    Requires the 'evolve' extension. Modifies metadata of a changeset
+    without changing its content. This creates a new changeset that
+    replaces the original.
+
+    Args:
+        repo_path: The repository path
+        revision: Revision to edit (defaults to current parent)
+        message: New commit message
+        user: New author (e.g., "Name <email@example.com>")
+        date: New date (ISO 8601 format)
+        fold: Combine with parent (fold into previous changeset)
+
+    Examples:
+        - hg_metaedit(message="Better commit message") -> Edit message
+        - hg_metaedit(user="Name <email@example.com>") -> Change author
+        - hg_metaedit(date="2024-01-15 10:30:00") -> Change date
+    """
+    path = validate_repo_path(repo_path)
+    args = ["metaedit"]
+
+    if revision:
+        try:
+            safe_revision = sanitize_input(revision, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid revision - {e}"
+        args.extend(["-r", safe_revision])
+
+    if message:
+        try:
+            safe_message = sanitize_input(message, max_length=10000)
+        except ValueError as e:
+            return f"Error: Invalid commit message - {e}"
+        args.extend(["-m", safe_message])
+
+    if user:
+        try:
+            safe_user = sanitize_input(user, max_length=500)
+        except ValueError as e:
+            return f"Error: Invalid user - {e}"
+        args.extend(["-u", safe_user])
+
+    if date:
+        try:
+            safe_date = sanitize_input(date, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid date - {e}"
+        args.extend(["-d", safe_date])
+
+    if fold:
+        args.append("--fold")
+
+    return await run_hg_command(args, cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
+@json_tool
+async def hg_stack(repo_path: str = ".") -> list[TextContent]:
+    """Show the current topic stack.
+
+    Requires the 'evolve' (topic) extension. Displays all changesets
+    in the current active topic with their status and relations.
+
+    Use `hg_next`/`hg_previous` to navigate the stack, and
+    `hg_absorb` or `hg_fold` to reorganize it.
+    """
+    path = validate_repo_path(repo_path)
+    return await run_hg_command(["stack"], cwd=path)  # type: ignore[return-value]
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_prune(
+    revisions: list[str] | str,
+    repo_path: str = ".",
+) -> str:
+    """Mark changesets as obsolete (history cleanup).
+
+    Requires the 'evolve' extension. Prunes revisions, marking them
+    as obsolete. Unlike strip, prune doesn't actually delete anything
+    immediately; the changesets remain until garbage collection.
+
+    Pruned changesets can be recovered with `hg_rewind`.
+
+    Args:
+        revisions: Revision(s) to prune (required)
+        repo_path: The repository path
+
+    Examples:
+        - hg_prune(revisions="abc123") -> Prune a changeset
+        - hg_prune(revisions=["abc123", "def456"]) -> Prune multiple
+    """
+    path = validate_repo_path(repo_path)
+    args = ["prune"]
+
+    revisions_list = parse_list_param(revisions)
+    if not revisions_list:
+        return "Error: revisions are required for prune."
+
+    for rev in revisions_list:
+        try:
+            safe_rev = sanitize_input(rev, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid revision - {e}"
+        args.extend(["-r", safe_rev])
 
     return await run_hg_command(args, cwd=path)

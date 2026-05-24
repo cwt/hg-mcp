@@ -22,12 +22,12 @@ Analysis of standard commands and built-in extensions (enabled/disabled) not yet
 | `fold` | evolve | Combine multiple changesets into one | [x] |
 | `split` | evolve | Split a changeset into multiple smaller ones | [x] |
 | `uncommit` | evolve | Uncommit part of a changeset (move to working dir) | [x] |
-| `next` | evolve | Move to next changeset in topic stack |
-| `previous` | evolve | Move to previous changeset in topic stack |
-| `rewind` | evolve | Recreate changesets that were pruned/evolved (undo) |
-| `metaedit` | evolve | Edit commit metadata (message, user, date, branch) |
-| `stack` | evolve | Show the current topic stack |
-| `prune` | evolve | Mark changesets as obsolete (history cleanup) |
+| `next` | evolve | Move to next changeset in topic stack | [x] |
+| `previous` | evolve | Move to previous changeset in topic stack | [x] |
+| `rewind` | evolve | Recreate changesets that were pruned/evolved (undo) | [x] |
+| `metaedit` | evolve | Edit commit metadata (message, user, date, branch) | [x] |
+| `stack` | evolve | Show the current topic stack | [x] |
+| `prune` | evolve | Mark changesets as obsolete (history cleanup) | [x] |
 | `shelve` | shelve | Temporarily stash uncommitted changes |
 | `unshelve` | shelve | Restore previously shelved changes |
 
