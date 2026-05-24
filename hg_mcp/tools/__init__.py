@@ -62,7 +62,7 @@ from hg_mcp.tools.history import (
     hg_summary,
     hg_verify,
 )
-from hg_mcp.tools.merge import hg_merge, hg_resolve
+from hg_mcp.tools.merge import hg_graft, hg_merge, hg_resolve
 
 __all__ = [
     # Core tools
@@ -128,6 +128,7 @@ __all__ = [
     "hg_topics",
     "hg_topic_current",
     # Merge tools
+    "hg_graft",
     "hg_merge",
     "hg_resolve",
     # hg-git tool

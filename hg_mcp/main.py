@@ -31,6 +31,7 @@ from hg_mcp.tools import (  # noqa: F401
     hg_extensions,
     hg_files,
     hg_git,
+    hg_graft,
     hg_heads,
     hg_help,
     hg_histedit,

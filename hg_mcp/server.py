@@ -107,6 +107,7 @@ mcp: HG_MCP = HG_MCP(
 **Merge & Conflicts**
 - `hg_merge`: Merge branches
 - `hg_resolve`: List merge conflicts (JSON)
+- `hg_graft`: Copy changesets via merge machinery (safer than transplant)
 
 **Repository Inspection**
 - `hg_annotate`: Line-by-line changeset info (like `git blame`, JSON)
