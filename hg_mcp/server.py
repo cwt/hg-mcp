@@ -99,6 +99,7 @@ mcp: HG_MCP = HG_MCP(
 - `hg_phases`: Show/set changeset phases (public/draft/secret)
 
 **History Rewriting (Extensions Required)**
+- `hg_absorb`: Auto-amend uncommitted changes into prior commits (requires 'evolve')
 - `hg_rebase`: Rebase changesets (requires 'rebase')
 - `hg_strip`: Remove changesets (requires 'strip')
 - `hg_histedit`: Interactive history editing (requires 'histedit')

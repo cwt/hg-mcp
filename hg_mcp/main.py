@@ -13,6 +13,7 @@ from hg_mcp.server import mcp
 # Import all tools to register them with the MCP server
 # This must happen after mcp is imported, and before mcp.run()
 from hg_mcp.tools import (  # noqa: F401
+    hg_absorb,
     hg_add,
     hg_amend,
     hg_annotate,

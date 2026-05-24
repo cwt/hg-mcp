@@ -29,7 +29,7 @@ class TestMainModule:
     def test_tools_registered(self) -> None:
         """Test that all tools are registered with MCP server."""
         tools = mcp._tool_manager._tools
-        assert len(tools) == 50
+        assert len(tools) == 51
 
     def test_core_tools_registered(self) -> None:
         """Test core tools are registered."""
@@ -114,7 +114,7 @@ class TestMainModule:
     def test_tool_count(self) -> None:
         """Test exact number of tools registered."""
         tools = mcp._tool_manager._tools
-        assert len(tools) == 50
+        assert len(tools) == 51
 
     def test_tool_names_are_strings(self) -> None:
         """Test that all tool names are strings."""

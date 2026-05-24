@@ -40,6 +40,7 @@ from hg_mcp.tools.core import (
     hg_update,
 )
 from hg_mcp.tools.hggit import (
+    hg_absorb,
     hg_evolve,
     hg_git,
     hg_rebase,
@@ -67,6 +68,7 @@ from hg_mcp.tools.merge import hg_graft, hg_merge, hg_resolve
 
 __all__ = [
     # Core tools
+    "hg_absorb",
     "hg_add",
     "hg_amend",
     "hg_backout",

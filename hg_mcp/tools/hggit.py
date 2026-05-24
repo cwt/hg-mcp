@@ -278,3 +278,20 @@ async def hg_evolve(repo_path: str = ".") -> str:
     """Show evolution history using the evolve extension."""
     path = validate_repo_path(repo_path)
     return await run_hg_command(["evolve"], cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
+async def hg_absorb(repo_path: str = ".") -> str:
+    """Auto-amend uncommitted changes into prior commits.
+
+    Requires the 'evolve' extension. Automatically finds the correct
+    commit to amend each uncommitted change into its logical parent.
+
+    This is similar to 'git absorb' and is useful for cleaning up
+    changes after they've been made without remembering to amend.
+
+    Use `hg_absorb` daily to keep commits logically organized.
+    """
+    path = validate_repo_path(repo_path)
+    return await run_hg_command(["absorb"], cwd=path)
