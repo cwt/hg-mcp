@@ -42,6 +42,7 @@ from hg_mcp.tools import (  # noqa: F401
     hg_merge,
     hg_outgoing,
     hg_paths,
+    hg_phases,
     hg_pull,
     hg_push,
     hg_rebase,

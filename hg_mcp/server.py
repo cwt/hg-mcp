@@ -96,6 +96,7 @@ mcp: HG_MCP = HG_MCP(
 - `hg_paths`: List configured remotes (JSON)
 - `hg_config`: Show configuration (JSON)
 - `hg_extensions`: List enabled extensions
+- `hg_phases`: Show/set changeset phases (public/draft/secret)
 
 **History Rewriting (Extensions Required)**
 - `hg_rebase`: Rebase changesets (requires 'rebase')

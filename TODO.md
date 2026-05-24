@@ -17,7 +17,7 @@ Analysis of standard commands and built-in extensions (enabled/disabled) not yet
 | `clone` | standard | Copy a repository | [x] |
 | `bisect` | standard | Binary search for regression-introducing changeset | [x] |
 | `graft` | standard | Copy changesets (merge-based cherry-pick, safer than transplant) | [x] |
-| `phases` | standard | Show/set changeset phases (draft/public/secret) |
+| `phases` | standard | Show/set changeset phases (draft/public/secret) | [x] |
 | `absorb` | evolve | Auto-amend uncommitted changes into prior commits |
 | `fold` | evolve | Combine multiple changesets into one |
 | `split` | evolve | Split a changeset into multiple smaller ones |

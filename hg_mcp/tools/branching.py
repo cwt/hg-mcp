@@ -295,3 +295,60 @@ async def hg_topics(repo_path: str = ".") -> list[TextContent]:
     """
     path = validate_repo_path(repo_path)
     return await run_hg_command(["topics"], cwd=path)  # type: ignore[return-value]
+
+
+@mcp.tool()
+@handle_repo_errors
+@json_tool
+async def hg_phases(
+    repo_path: str = ".",
+    revision: str = "",
+    public: bool = False,
+    draft: bool = False,
+    secret: bool = False,
+    force: bool = False,
+) -> list[TextContent]:
+    """Show or set changeset phases.
+
+    Mercurial phases control which changesets are safe to rewrite:
+    - **public**: Immutable, pushed to a publishing server
+    - **draft**: Mutable, not yet pushed to a publishing server
+    - **secret**: Not shared, never pushed
+
+    Without any flags, shows phases of all visible changesets.
+    Use --draft/--secret to demote phases (requires --force for public).
+
+    Args:
+        repo_path: The repository path
+        revision: Revision(s) to query or modify (defaults to all)
+        public: Set phase to public
+        draft: Set phase to draft
+        secret: Set phase to secret
+        force: Force phase change (required for demoting public changesets)
+
+    Examples:
+        - hg_phases() -> Show phases of all changesets
+        - hg_phases(revision="tip") -> Show phase of tip
+        - hg_phases(revision="abc123", secret=True) -> Make a changeset secret
+    """
+    path = validate_repo_path(repo_path)
+    args = ["phase"]
+
+    if public:
+        args.append("--public")
+    elif draft:
+        args.append("--draft")
+    elif secret:
+        args.append("--secret")
+
+    if force:
+        args.append("--force")
+
+    if revision:
+        try:
+            safe_revision = sanitize_input(revision, max_length=200)
+        except ValueError as e:
+            return [TextContent(type="text", text=f"Error: Invalid revision - {e}")]
+        args.extend(["-r", safe_revision])
+
+    return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
