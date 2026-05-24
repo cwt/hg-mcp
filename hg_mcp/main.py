@@ -17,6 +17,7 @@ from hg_mcp.tools import (  # noqa: F401
     hg_amend,
     hg_annotate,
     hg_backout,
+    hg_bisect,
     hg_bookmark,
     hg_bookmarks,
     hg_branch,

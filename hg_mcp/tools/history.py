@@ -20,6 +20,59 @@ from hg_mcp.server import mcp
 
 @mcp.tool()
 @handle_repo_errors
+async def hg_bisect(
+    repo_path: str = ".",
+    command: str = "",
+    revision: str = "",
+    extend: bool = False,
+) -> str:
+    """Binary search for a regression-introducing changeset.
+
+    Equivalent to 'git bisect'. Helps find the changeset that
+    introduced a bug by marking revisions as good or bad.
+
+    Usage workflow:
+    1. hg_bisect(command="reset") - Reset any previous bisect
+    2. hg_bisect(command="bad", revision="tip") - Mark current as bad
+    3. hg_bisect(command="good", revision="42") - Mark a known good revision
+    4. Test the revision Mercurial updates to
+    5. hg_bisect(command="good") or hg_bisect(command="bad") - Mark result
+    6. Repeat steps 4-5 until the culprit is found
+    7. hg_bisect(command="reset") - End bisection
+
+    Args:
+        repo_path: The repository path
+        command: Bisect action - "reset", "good", "bad", "skip", or "" for status
+        revision: Revision to mark (optional; uses current if omitted)
+        extend: If True, extend bisect range beyond current changeset
+
+    Examples:
+        - hg_bisect() -> Show current bisect status
+        - hg_bisect(command="reset") -> Reset bisect state
+        - hg_bisect(command="bad", revision="tip") -> Mark tip as bad
+        - hg_bisect(command="good", revision="100") -> Mark r100 as good
+    """
+    path = validate_repo_path(repo_path)
+    args = ["bisect"]
+
+    cmd = command.strip().lower()
+    if cmd in ("reset", "good", "bad", "skip"):
+        args.extend(["--" + cmd])
+        if revision:
+            try:
+                safe_revision = sanitize_input(revision, max_length=200)
+            except ValueError as e:
+                return f"Error: Invalid revision - {e}"
+            args.append(safe_revision)
+
+    if extend:
+        args.append("--extend")
+
+    return await run_hg_command(args, cwd=path)
+
+
+@mcp.tool()
+@handle_repo_errors
 @json_tool
 async def hg_annotate(
     repo_path: str = ".",

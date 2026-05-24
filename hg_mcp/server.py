@@ -110,6 +110,7 @@ mcp: HG_MCP = HG_MCP(
 
 **Repository Inspection**
 - `hg_annotate`: Line-by-line changeset info (like `git blame`, JSON)
+- `hg_bisect`: Binary search for regression-introducing changeset
 - `hg_files`: List tracked files (JSON)
 - `hg_summary`: Working directory summary
 - `hg_verify`: Repository integrity check (JSON)

@@ -48,6 +48,7 @@ from hg_mcp.tools.hggit import (
 from hg_mcp.tools.history import (
     hg_annotate,
     hg_backout,
+    hg_bisect,
     hg_export,
     hg_files,
     hg_heads,
@@ -98,6 +99,7 @@ __all__ = [
     # History tools
     "hg_annotate",
     "hg_backout",
+    "hg_bisect",
     "hg_evolve",
     "hg_export",
     "hg_files",
