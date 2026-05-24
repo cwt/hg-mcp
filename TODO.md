@@ -1,6 +1,84 @@
-# TODO - v0.8.x Development
+# TODO - v0.9.x Development
 
-## v0.8.2 Status (Current)
+## v0.9.2 Status (Current)
+
+**Version:** v0.9.2 — 46 tools covering Mercurial 7.1.x operations
+
+---
+
+## Missing Mercurial 7.1.x Features
+
+Analysis of standard commands and built-in extensions (enabled/disabled) not yet exposed as MCP tools.
+
+### High Priority
+
+| Command | Source | Description |
+|---|---|---|
+| `clone` | standard | Copy a repository |
+| `bisect` | standard | Binary search for regression-introducing changeset |
+| `graft` | standard | Copy changesets (merge-based cherry-pick, safer than transplant) |
+| `phases` | standard | Show/set changeset phases (draft/public/secret) |
+| `absorb` | evolve | Auto-amend uncommitted changes into prior commits |
+| `fold` | evolve | Combine multiple changesets into one |
+| `split` | evolve | Split a changeset into multiple smaller ones |
+| `uncommit` | evolve | Uncommit part of a changeset (move to working dir) |
+| `next` | evolve | Move to next changeset in topic stack |
+| `previous` | evolve | Move to previous changeset in topic stack |
+| `rewind` | evolve | Recreate changesets that were pruned/evolved (undo) |
+| `metaedit` | evolve | Edit commit metadata (message, user, date, branch) |
+| `stack` | evolve | Show the current topic stack |
+| `prune` | evolve | Mark changesets as obsolete (history cleanup) |
+| `shelve` | shelve | Temporarily stash uncommitted changes |
+| `unshelve` | shelve | Restore previously shelved changes |
+
+### Medium Priority
+
+| Command | Source | Description |
+|---|---|---|
+| `addremove` | standard | Auto-add new files, forget deleted ones |
+| `copy` | standard | Mark files as copied (keeps original, unlike rename) |
+| `forget` | standard | Stop tracking files without deleting them |
+| `grep` | standard | Search for patterns in tracked files |
+| `fixup` | evolve | Amend a working commit to the specified parent |
+| `obslog` | evolve | Show obsolescence history of a changeset |
+| `pick` | evolve | Pick a changeset on top of working directory |
+| `touch` | evolve | Revive an obsolete changeset (makes it current) |
+| `tstack` | topic | Show topic stack (graph view) |
+| `tstatus` | topic | Show status relative to topic base |
+| `git-cleanup` | hggit | Clean up stale Git bookmarks/internals |
+| `purge` | purge | Delete untracked files from working directory |
+
+### Low Priority
+
+| Command | Source | Description |
+|---|---|---|
+| `archive` | standard | Create unversioned tarball/zip of repo |
+| `bundle` | standard | Create a changegroup file (offline transfer) |
+| `unbundle` | standard | Apply a changegroup file |
+| `manifest` | standard | Show file manifest of a revision |
+| `recover` | standard | Roll back an interrupted transaction |
+| `root` | standard | Print repository root directory |
+| `churn` | churn | Commit activity statistics |
+| `convert` | convert | Import from foreign VCS |
+| `lfconvert` | largefiles | Convert repo to largefiles |
+| `lfpull` | largefiles | Pull largefiles without pulling history |
+| `git-verify` | hggit | Verify integrity of Git-backed data |
+| `change` | topic | Change topic name on existing revisions |
+| `pstatus` | evolve | Status relative to predecessor |
+| `pdiff` | evolve | Diff relative to predecessor |
+
+### Not Planned
+
+| Command | Reason |
+|---|---|
+| `serve` | Not useful in MCP context |
+| `version` | Not useful in MCP context |
+| `gpg` | Niche signing operations |
+| `closehead` | Rarely needed |
+
+---
+
+## v0.8.2 Status (Previous)
 
 **Version:** v0.8.2 - Added missing tools with input sanitization
 
