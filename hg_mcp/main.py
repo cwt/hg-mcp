@@ -152,7 +152,7 @@ def main() -> None:
         if transports == {"stdio"}:
             if args.jail:
                 mcp.jail_path = args.jail
-                print(f"Jail path set to: {args.jail}")
+                print(f"Jail path set to: {args.jail}", file=sys.stderr)
             if args.mercurial:
                 mcp.hg_path = args.mercurial
             mcp.run(transport="stdio")
@@ -256,7 +256,7 @@ def main() -> None:
             )
             sys.exit(1)
     except KeyboardInterrupt:
-        print("\nServer stopped")
+        print("\nServer stopped", file=sys.stderr)
         sys.exit(0)
 
 
