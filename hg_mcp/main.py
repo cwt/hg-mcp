@@ -116,6 +116,13 @@ def main() -> None:
         "Required for HTTP transports. Optional for stdio. "
         "Example: --jail /home/user/projects",
     )
+    parser.add_argument(
+        "--mercurial",
+        default=None,
+        help="Path to the Mercurial (hg) executable. "
+        "Defaults to 'hg' (resolved from PATH). "
+        "Example: --mercurial /usr/local/bin/hg",
+    )
 
     args = parser.parse_args()
 
@@ -136,6 +143,8 @@ def main() -> None:
             if args.jail:
                 mcp.jail_path = args.jail
                 print(f"Jail path set to: {args.jail}")
+            if args.mercurial:
+                mcp.hg_path = args.mercurial
             mcp.run(transport="stdio")
         elif "stdio" in transports:
             print("Error: Cannot mix stdio with HTTP transports", file=sys.stderr)
@@ -149,6 +158,7 @@ def main() -> None:
             from hg_mcp.helpers import APIKeyMiddleware
 
             mcp.jail_path = args.jail
+            mcp.hg_path = args.mercurial if args.mercurial else None
             mcp.settings.json_response = True
 
             # SSE and Streamable HTTP app setup

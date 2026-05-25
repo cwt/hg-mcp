@@ -128,6 +128,7 @@ hg-mcp --transport sse streamable-http --port 8000
 - `--host`: Host to bind to (default: 0.0.0.0)
 - `--api-key`: **Optional.** Enable mandatory API key authentication. When set, clients must provide this key in their request headers.
 - `--jail`: **Required for HTTP transports.** Restrict repository access to this directory tree for security.
+- `--mercurial`: **Optional.** Path to the Mercurial (`hg`) executable. Defaults to `hg` (resolved from PATH). Example: `--mercurial /usr/local/bin/hg`
 
 ### Security Features
 

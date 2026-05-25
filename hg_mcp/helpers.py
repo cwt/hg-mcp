@@ -369,8 +369,12 @@ async def run_hg_command(
         if env:
             process_env.update(env)
 
+        from hg_mcp.server import mcp
+
+        hg_executable = mcp.hg_path if mcp.hg_path else "hg"
+
         process = await asyncio.create_subprocess_exec(
-            "hg",
+            hg_executable,
             *cmd_args,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

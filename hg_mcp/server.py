@@ -10,11 +10,12 @@ from mcp.server.fastmcp import FastMCP
 
 
 class HG_MCP(FastMCP):
-    """Custom FastMCP subclass with jail path support."""
+    """Custom FastMCP subclass with jail path and hg executable path support."""
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)  # type: ignore[arg-type]
         self._jail_path: Optional[Path] = None
+        self._hg_path: Optional[str] = None
 
     @property
     def jail_path(self) -> Optional[Path]:
@@ -35,6 +36,18 @@ class HG_MCP(FastMCP):
                 f"jail_path is immutable once set (current: {self._jail_path}, attempted: {new_path})"
             )
         self._jail_path = new_path
+
+    @property
+    def hg_path(self) -> Optional[str]:
+        """Get the custom path to the Mercurial executable."""
+        return self._hg_path
+
+    @hg_path.setter
+    def hg_path(self, value: Optional[str]) -> None:
+        """Set the custom path to the Mercurial executable."""
+        if value is None:
+            return
+        self._hg_path = value
 
 
 mcp: HG_MCP = HG_MCP(

@@ -1,6 +1,14 @@
 # TODO - v0.10.x Development
 
-## v0.10.0 Status (Current)
+## v0.10.1 Status (Current)
+
+**Version:** v0.10.1 — 62 tools covering Mercurial 7.1.x operations | Coverage: 87%
+
+### v0.10.1 Changelog
+
+- Added `--mercurial` CLI option to specify custom path to the `hg` executable
+
+## v0.10.0 Status (Previous)
 
 **Version:** v0.10.0 — 62 tools covering Mercurial 7.1.x operations | Coverage: 87%
 
