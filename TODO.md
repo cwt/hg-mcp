@@ -1,6 +1,14 @@
 # TODO - v0.10.x Development
 
-## v0.10.1 Status (Current)
+## v0.10.2 Status (Current)
+
+**Version:** v0.10.2 — 62 tools covering Mercurial 7.1.x operations | Coverage: 87%
+
+### v0.10.2 Changelog
+
+- Validate `hg` executable at startup; exit with error if not found
+
+## v0.10.1 Status (Previous)
 
 **Version:** v0.10.1 — 62 tools covering Mercurial 7.1.x operations | Coverage: 87%
 

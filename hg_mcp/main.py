@@ -126,6 +126,16 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    import shutil
+
+    hg_path: str = args.mercurial if args.mercurial else "hg"
+    if shutil.which(hg_path) is None:
+        print(
+            f"Error: Mercurial executable not found: {hg_path}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     transports = set(args.transport)
 
     # Jail is required for HTTP transports
