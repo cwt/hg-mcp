@@ -1,6 +1,14 @@
 # TODO - v0.10.x Development
 
-## v0.10.2 Status (Current)
+## v0.10.3 Status (Current)
+
+**Version:** v0.10.3 — 62 tools covering Mercurial 7.1.x operations | Coverage: 87%
+
+### v0.10.3 Changelog
+
+- Fix print() to use stderr in stdio mode to avoid corrupting JSON-RPC stream
+
+## v0.10.2 Status (Previous)
 
 **Version:** v0.10.2 — 62 tools covering Mercurial 7.1.x operations | Coverage: 87%
 
