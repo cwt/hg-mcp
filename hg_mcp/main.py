@@ -40,6 +40,8 @@ from hg_mcp.tools import (  # noqa: F401
     hg_identify,
     hg_import,
     hg_incoming,
+    hg_init,
+    hg_largefiles,
     hg_log,
     hg_merge,
     hg_metaedit,
@@ -142,7 +144,8 @@ def main() -> None:
     if transports != {"stdio"} and not args.jail:
         print(
             "Error: --jail is required for HTTP transports (sse, streamable-http).\n"
-            "This restricts repository access to a specific directory tree for security.\n"
+            "This restricts repository access to a specific directory tree "
+            "for security.\n"
             "Example: --jail /home/user/projects",
             file=sys.stderr,
         )
@@ -195,7 +198,8 @@ def main() -> None:
                     Route(mcp.settings.sse_path, http_handler, methods=["POST"])
                 )
                 print(
-                    f"Added POST support to {mcp.settings.sse_path} for Streamable HTTP compatibility"
+                    f"Added POST support to {mcp.settings.sse_path} "
+                    f"for Streamable HTTP compatibility"
                 )
 
             # 2. Regular routes

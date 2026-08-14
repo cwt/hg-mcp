@@ -117,6 +117,13 @@ class TestMainModule:
         tools = mcp._tool_manager._tools
         assert len(tools) == 62
 
+    def test_tools_all_no_duplicates(self) -> None:
+        """Test that tools.__all__ has no duplicates and matches tool count."""
+        import hg_mcp.tools as tools_module
+
+        assert len(tools_module.__all__) == 62
+        assert len(tools_module.__all__) == len(set(tools_module.__all__))
+
     def test_tool_names_are_strings(self) -> None:
         """Test that all tool names are strings."""
         tools = mcp._tool_manager._tools
