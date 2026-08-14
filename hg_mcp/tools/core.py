@@ -8,11 +8,10 @@ from mcp.types import TextContent
 from hg_mcp.decorators import handle_repo_errors, json_tool
 from hg_mcp.helpers import (
     MAX_LOG_LIMIT,
-    _check_git_remotes,
-    _is_hggit_enabled,
     parse_list_param,
     run_hg_command,
     sanitize_input,
+    sync_git_bookmarks,
     validate_path,
     validate_repo_path,
 )
@@ -194,17 +193,7 @@ async def hg_commit(
 
     # If commit succeeded, check if hg-git is enabled and sync bookmarks
     if not result.startswith("Error"):
-        # Check if hg-git is enabled
-        if await _is_hggit_enabled(path):
-            # Check if repo is Git-backed
-            is_git_backed, _ = await _check_git_remotes(path)
-            if is_git_backed:
-                # Run hg gexport to sync Mercurial bookmarks to Git branches
-                export_result = await run_hg_command(["gexport"], cwd=path)
-                if not export_result.startswith("Error"):
-                    result += "\n\n✓ hg-git: Bookmarks exported to Git branches"
-                else:
-                    result += f"\n\nNote: hg gexport skipped - {export_result}"
+        result += await sync_git_bookmarks(path)
 
     return result
 
@@ -328,17 +317,7 @@ async def hg_amend(
 
     # If amend succeeded, check if hg-git is enabled and sync bookmarks
     if not result.startswith("Error"):
-        try:
-            if await _is_hggit_enabled(path):
-                is_git_backed, _ = await _check_git_remotes(path)
-                if is_git_backed:
-                    export_result = await run_hg_command(["gexport"], cwd=path)
-                    if not export_result.startswith("Error"):
-                        result += "\n\n✓ hg-git: Bookmarks exported to Git branches"
-                    else:
-                        result += f"\n\nNote: hg gexport skipped - {export_result}"
-        except Exception as e:
-            result += f"\n\nNote: hg-git integration check failed: {e}"
+        result += await sync_git_bookmarks(path)
 
     return result
 

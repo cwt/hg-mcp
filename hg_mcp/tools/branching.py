@@ -7,10 +7,9 @@ from mcp.types import TextContent
 
 from hg_mcp.decorators import handle_repo_errors, json_tool
 from hg_mcp.helpers import (
-    _check_git_remotes,
-    _is_hggit_enabled,
     run_hg_command,
     sanitize_input,
+    sync_git_bookmarks,
     validate_repo_path,
 )
 from hg_mcp.server import mcp
@@ -77,17 +76,7 @@ async def hg_bookmark(
 
         # If bookmark creation succeeded, check if hg-git is enabled and sync
         if not result.startswith("Error"):
-            try:
-                if await _is_hggit_enabled(path):
-                    is_git_backed, _ = await _check_git_remotes(path)
-                    if is_git_backed:
-                        export_result = await run_hg_command(["gexport"], cwd=path)
-                        if not export_result.startswith("Error"):
-                            result += "\n\n✓ hg-git: Bookmarks exported to Git branches"
-                        else:
-                            result += f"\n\nNote: hg gexport skipped - {export_result}"
-            except Exception as e:
-                result += f"\n\nNote: hg-git integration check failed: {e}"
+            result += await sync_git_bookmarks(path)
 
         return result
 

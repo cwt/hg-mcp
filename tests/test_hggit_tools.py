@@ -15,17 +15,17 @@ from pathlib import Path
 
 import pytest
 
+from hg_mcp.helpers import (
+    _check_git_remotes,
+    _get_git_branches,
+    _is_hggit_enabled,
+)
 from hg_mcp.tools import (
     hg_evolve,
     hg_git,
     hg_rebase,
     hg_strip,
     hg_transplant,
-)
-from hg_mcp.tools.hggit import (
-    _check_git_remotes,
-    _get_git_branches,
-    _is_hggit_enabled,
 )
 
 

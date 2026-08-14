@@ -65,40 +65,31 @@ class TestHgCoreExtended:
     @pytest.mark.asyncio
     async def test_commit_hggit_integration(self, hg_repo_with_commits: Path) -> None:
         """Test hg_commit with hg-git integration mocked."""
-        with patch("hg_mcp.tools.core._is_hggit_enabled", return_value=True):
-            with patch(
-                "hg_mcp.tools.core._check_git_remotes",
-                return_value=(True, ["origin"]),
-            ):
-                with patch("hg_mcp.tools.core.run_hg_command") as mock_run:
-                    # First call is for commit, second for gexport
-                    mock_run.side_effect = [
-                        "Commit successful",
-                        "Export successful",
-                    ]
+        with patch(
+            "hg_mcp.tools.core.sync_git_bookmarks",
+            return_value="\n\n✓ hg-git: Bookmarks exported to Git branches",
+        ):
+            with patch("hg_mcp.tools.core.run_hg_command") as mock_run:
+                mock_run.return_value = "Commit successful"
 
-                    result = await hg_commit("test message", str(hg_repo_with_commits))
+                result = await hg_commit("test message", str(hg_repo_with_commits))
 
-                    assert "hg-git: Bookmarks exported" in result
-                    assert mock_run.call_count == 2
+                assert "hg-git: Bookmarks exported" in result
+                assert mock_run.call_count == 1
 
     @pytest.mark.asyncio
     async def test_amend_hggit_integration(self, hg_repo_with_commits: Path) -> None:
         """Test hg_amend with hg-git integration mocked."""
-        with patch("hg_mcp.tools.core._is_hggit_enabled", return_value=True):
-            with patch(
-                "hg_mcp.tools.core._check_git_remotes",
-                return_value=(True, ["origin"]),
-            ):
-                with patch("hg_mcp.tools.core.run_hg_command") as mock_run:
-                    mock_run.side_effect = [
-                        "Amend successful",
-                        "Export successful",
-                    ]
+        with patch(
+            "hg_mcp.tools.core.sync_git_bookmarks",
+            return_value="\n\n✓ hg-git: Bookmarks exported to Git branches",
+        ):
+            with patch("hg_mcp.tools.core.run_hg_command") as mock_run:
+                mock_run.return_value = "Amend successful"
 
-                    result = await hg_amend(repo_path=str(hg_repo_with_commits))
+                result = await hg_amend(repo_path=str(hg_repo_with_commits))
 
-                    assert "hg-git: Bookmarks exported" in result
+                assert "hg-git: Bookmarks exported" in result
 
     @pytest.mark.asyncio
     async def test_amend_message_sanitization(self, hg_repo_with_commits: Path) -> None:

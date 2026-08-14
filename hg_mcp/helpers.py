@@ -526,3 +526,18 @@ async def _get_git_branches(
         pass
 
     return git_branches, local_bookmarks
+
+
+async def sync_git_bookmarks(path: Path) -> str:
+    """Sync Mercurial bookmarks to Git branches if hg-git is enabled and repo is Git-backed."""
+    try:
+        if await _is_hggit_enabled(path):
+            is_git_backed, _ = await _check_git_remotes(path)
+            if is_git_backed:
+                export_result = await run_hg_command(["gexport"], cwd=path)
+                if not export_result.startswith("Error"):
+                    return "\n\n✓ hg-git: Bookmarks exported to Git branches"
+                return f"\n\nNote: hg gexport skipped - {export_result}"
+    except Exception as e:
+        return f"\n\nNote: hg-git integration check failed: {e}"
+    return ""

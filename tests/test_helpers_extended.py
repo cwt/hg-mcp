@@ -25,6 +25,7 @@ from hg_mcp.helpers import (
     format_bytes,
     parse_list_param,
     run_hg_command,
+    sync_git_bookmarks,
     validate_path,
     validate_repo_path,
 )
@@ -133,3 +134,34 @@ class TestHelpersExtended:
             git_branches, local_bookmarks = await _get_git_branches(tmp_path, ".git")
             assert git_branches == []
             assert local_bookmarks == []
+
+    @pytest.mark.asyncio
+    async def test_sync_git_bookmarks_not_enabled(self, tmp_path: Path) -> None:
+        """Test sync_git_bookmarks when hg-git is not enabled."""
+        with patch("hg_mcp.helpers._is_hggit_enabled", return_value=False):
+            result = await sync_git_bookmarks(tmp_path)
+            assert result == ""
+
+    @pytest.mark.asyncio
+    async def test_sync_git_bookmarks_success(self, tmp_path: Path) -> None:
+        """Test sync_git_bookmarks when hg-git is enabled and gexport succeeds."""
+        with patch("hg_mcp.helpers._is_hggit_enabled", return_value=True):
+            with patch(
+                "hg_mcp.helpers._check_git_remotes", return_value=(True, ["remote"])
+            ):
+                with patch("hg_mcp.helpers.run_hg_command", return_value="exporting"):
+                    result = await sync_git_bookmarks(tmp_path)
+                    assert "Bookmarks exported" in result
+
+    @pytest.mark.asyncio
+    async def test_sync_git_bookmarks_skipped_on_error(self, tmp_path: Path) -> None:
+        """Test sync_git_bookmarks when gexport returns an error."""
+        with patch("hg_mcp.helpers._is_hggit_enabled", return_value=True):
+            with patch(
+                "hg_mcp.helpers._check_git_remotes", return_value=(True, ["remote"])
+            ):
+                with patch(
+                    "hg_mcp.helpers.run_hg_command", return_value="Error: export failed"
+                ):
+                    result = await sync_git_bookmarks(tmp_path)
+                    assert "hg gexport skipped" in result
