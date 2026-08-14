@@ -482,13 +482,21 @@ async def hg_largefiles(repo_path: str = ".") -> list[TextContent]:
                 rel_path = str(file_path.relative_to(hglf_path))
 
                 size = 0
-                try:
-                    content = file_path.read_text(encoding="utf-8").strip()
-                    lines = content.split("\n")
-                    if len(lines) >= 2 and lines[1].isdigit():
-                        size = int(lines[1])
-                except (ValueError, UnicodeDecodeError, OSError):
-                    size = 0
+                working_copy_file = path / rel_path
+                if working_copy_file.is_file():
+                    try:
+                        size = working_copy_file.stat().st_size
+                    except OSError:
+                        size = 0
+
+                if size == 0:
+                    try:
+                        content = file_path.read_text(encoding="utf-8").strip()
+                        lines = content.split("\n")
+                        if len(lines) >= 2 and lines[1].isdigit():
+                            size = int(lines[1])
+                    except (ValueError, UnicodeDecodeError, OSError):
+                        size = 0
 
                 largefiles.append((rel_path, size))
 
@@ -500,7 +508,10 @@ async def hg_largefiles(repo_path: str = ".") -> list[TextContent]:
         msg = "No largefiles found in this repository."
         return [TextContent(type="text", text=msg)]
 
-    largefiles.sort(key=lambda x: x[1], reverse=True)
+    def _get_largefile_size(item: tuple[str, int]) -> int:
+        return item[1]
+
+    largefiles.sort(key=_get_largefile_size, reverse=True)
 
     lines = ["Largefiles in repository:", "-" * 50]
     for filename, size in largefiles:

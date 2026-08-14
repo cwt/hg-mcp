@@ -79,6 +79,24 @@ class TestHgLargefiles:
         text = _extract_text(result)
         assert "bad.bin: 0 bytes" in text
 
+    @pytest.mark.asyncio
+    async def test_largefiles_working_copy_stat(self, hg_repo: Path) -> None:
+        """Test hg_largefiles detects file size from working tree file."""
+        hglf_dir = hg_repo / ".hglf"
+        hglf_dir.mkdir(exist_ok=True)
+
+        # Standin contains 1-line SHA hash (standard mercurial largefile format)
+        standin = hglf_dir / "realfile.dat"
+        standin.write_text("24c25f47055c57b77bc0ffbfcefe5d3a5e378a59\n")
+
+        # Working tree file contains 2048 bytes
+        working_file = hg_repo / "realfile.dat"
+        working_file.write_bytes(b"X" * 2048)
+
+        result = await hg_largefiles(str(hg_repo))
+        text = _extract_text(result)
+        assert "realfile.dat: 2.00 KB" in text
+
 
 class TestHgHisteditExtended:
     """Extended tests for hg_histedit tool."""
