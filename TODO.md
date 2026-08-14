@@ -1,12 +1,32 @@
 # TODO - v0.10.x Development
 
-## v0.10.3 Status (Current)
+## v0.10.4 Status (Current)
+
+**Version:** v0.10.4 — 62 tools covering Mercurial 7.1.x operations | Coverage: 87%
+
+### v0.10.4 Changelog
+
+- Fix server singleton `mcp.hg_path` resetting to `None` and eliminate mock pollution across tests
+- Explicitly isolate test repository fixtures from global host `~/.hgrc` extensions using `!`
+- Register missing `hg_init` and `hg_largefiles` imports in `main.py`
+- Deduplicate all 16 repeated symbol exports in `tools.__all__`
+- Deduplicate `hg-git` helper functions across `helpers.py` and `tools/hggit.py`
+- Unify bookmark export synchronization into `sync_git_bookmarks` for `hg_commit`, `hg_amend`, and `hg_bookmark`
+- Add `identify` and `phase` to `JSON_SUPPORTED_COMMANDS` and exclude mutation commands `rebase` and `strip`
+- Fix tag removal commit message in `hg_tag` to generate `"Remove tag <name>"`
+- Enhance `hg_largefiles` file size resolution using working-tree stat inspection and eliminate `lambda` sort key
+- Improve `sanitize_input` to allow valid message punctuation in commit descriptions while guarding against command substitution
+- Handle empty string and non-string list edge cases in `parse_list_param`
+- Prevent temporary file name collisions and leaks in `hg_histedit` using `NamedTemporaryFile` and `try...finally`
+
+## v0.10.3 Status (Previous)
 
 **Version:** v0.10.3 — 62 tools covering Mercurial 7.1.x operations | Coverage: 87%
 
 ### v0.10.3 Changelog
 
 - Fix print() to use stderr in stdio mode to avoid corrupting JSON-RPC stream
+
 
 ## v0.10.2 Status (Previous)
 
