@@ -26,6 +26,7 @@ from hg_mcp.helpers import (
     format_bytes,
     parse_list_param,
     run_hg_command,
+    sanitize_input,
     sync_git_bookmarks,
     validate_path,
     validate_repo_path,
@@ -180,3 +181,28 @@ class TestHelpersExtended:
         assert _get_extension_hint("some error", []) == ""
         assert _get_extension_hint("file not found", ["topic"]) == ""
         assert "topic" in _get_extension_hint("hg: unknown command 'topic'", ["topic"])
+
+    def test_parse_list_param_edge_cases(self) -> None:
+        """Test parse_list_param with empty string, stringified lists, and non-string items."""
+        assert parse_list_param("") == []
+        assert parse_list_param("   ") == []
+        assert parse_list_param(["a", "b"]) == ["a", "b"]
+        assert parse_list_param([1, 2]) == ["1", "2"]  # type: ignore[list-item]
+        assert parse_list_param('["foo", "bar"]') == ["foo", "bar"]
+        assert parse_list_param(None, default=["def"]) == ["def"]
+
+    def test_sanitize_input_allow_shell_chars(self) -> None:
+        """Test sanitize_input with allow_shell_chars=True allows commit message symbols."""
+        msg = "feat: add <item> & update | v1.0"
+        # Should raise with allow_shell_chars=False
+        with pytest.raises(ValueError):
+            sanitize_input(msg, allow_shell_chars=False)
+
+        # Should succeed with allow_shell_chars=True
+        assert sanitize_input(msg, allow_shell_chars=True) == msg
+
+        # Length limit and whitespace checks still apply
+        with pytest.raises(ValueError):
+            sanitize_input("   ", allow_shell_chars=True)
+        with pytest.raises(ValueError):
+            sanitize_input("a" * 10, max_length=5, allow_shell_chars=True)

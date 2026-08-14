@@ -164,15 +164,17 @@ GIT_REMOTE_PATTERNS: list[str] = [
 MAX_LOG_LIMIT = 1000
 
 
-def sanitize_input(value: str, max_length: int = 1000) -> str:
-    """Sanitize user-provided input to prevent potential command injection.
-
-    While subprocess.exec is used (safer than shell=True), this provides
-    defense-in-depth by rejecting obviously malicious input.
+def sanitize_input(
+    value: str,
+    max_length: int = 1000,
+    allow_shell_chars: bool = False,
+) -> str:
+    """Sanitize user input to prevent command injection and ensure valid values.
 
     Args:
-        value: The input string to sanitize
-        max_length: Maximum allowed length (default 1000)
+        value: The string to sanitize
+        max_length: Maximum allowed length for the input
+        allow_shell_chars: If True, skips shell metacharacter checks (for messages)
 
     Returns:
         The sanitized string
@@ -190,9 +192,13 @@ def sanitize_input(value: str, max_length: int = 1000) -> str:
     if not value.strip():
         raise ValueError("Input must not be empty or whitespace-only")
 
-    # Check for shell metacharacters that could be dangerous
-    # Even though we use subprocess.exec, this is defense-in-depth
-    dangerous_patterns = ["`", "$(", "${", "|", ";", "&&", "||", ">", "<", "&"]
+    if allow_shell_chars:
+        # For commit messages/descriptions: reject command substitution/expansion tokens
+        dangerous_patterns = ["`", "$(", "${"]
+    else:
+        # For identifiers (branch, bookmark, tag, revision, file): reject shell metacharacters
+        dangerous_patterns = ["`", "$(", "${", "|", ";", "&&", "||", ">", "<", "&"]
+
     for pattern in dangerous_patterns:
         if pattern in value:
             raise ValueError(f"Input contains invalid character sequence: {pattern}")
@@ -432,23 +438,21 @@ def parse_list_param(
     if param is None:
         return default if default is not None else []
     if isinstance(param, list):
-        # Type guard ensures this is list[str]
-        return param
+        return [str(item) for item in param]
     if isinstance(param, str):
-        # Could be a JSON array string or single value
-        if param.startswith("["):
+        cleaned = param.strip()
+        if not cleaned:
+            return default if default is not None else []
+        if cleaned.startswith("[") and cleaned.endswith("]"):
             try:
-                parsed: object = json.loads(param)
+                parsed: object = json.loads(cleaned)
                 if isinstance(parsed, list):
                     return [str(item) for item in parsed]
-                # If JSON doesn't parse to a list, treat as single value
-                return [param]
+                return [cleaned]
             except json.JSONDecodeError:
-                # Not valid JSON, treat as single value
-                return [param]
-        return [param]
-    # This should never happen, but return empty list as fallback
-    return []  # type: ignore[unreachable]
+                return [cleaned]
+        return [cleaned]
+    return default if default is not None else []  # type: ignore[unreachable]
 
 
 async def _is_hggit_enabled(path: Path) -> bool:

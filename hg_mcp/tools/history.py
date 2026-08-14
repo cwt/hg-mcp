@@ -128,10 +128,13 @@ async def hg_backout(
         args.append("--merge")
         if message:
             try:
-                safe_message = sanitize_input(message, max_length=10000)
+                safe_message = sanitize_input(
+                    message, max_length=10000, allow_shell_chars=True
+                )
             except ValueError as e:
                 return f"Error: Invalid commit message - {e}"
             args.extend(["-m", safe_message])
+
         else:
             # Default message to avoid interactive editor
             args.extend(["-m", f"Backed out changeset {safe_revision}"])

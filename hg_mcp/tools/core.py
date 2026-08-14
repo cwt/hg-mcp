@@ -306,7 +306,9 @@ async def hg_amend(
     if message:
         # Sanitize commit message
         try:
-            safe_message = sanitize_input(message, max_length=10000)
+            safe_message = sanitize_input(
+                message, max_length=10000, allow_shell_chars=True
+            )
         except ValueError as e:
             return f"Error: Invalid commit message - {e}"
         args.extend(["-m", safe_message])
@@ -434,7 +436,9 @@ async def hg_shelve(
 
     if message:
         try:
-            safe_message = sanitize_input(message, max_length=10000)
+            safe_message = sanitize_input(
+                message, max_length=10000, allow_shell_chars=True
+            )
         except ValueError as e:
             return f"Error: Invalid message - {e}"
         args.extend(["-m", safe_message])
