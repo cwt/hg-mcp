@@ -80,7 +80,14 @@ def hg_repo(temp_dir: Path) -> Generator[Path, None, None]:
 username = Test User <test@example.com>
 
 [extensions]
-# No extensions enabled - clean slate for testing
+# Explicitly disable all to isolate test repo from global ~/.hgrc
+strip = !
+rebase = !
+evolve = !
+topic = !
+transplant = !
+largefiles = !
+hggit = !
 """,
         encoding="utf-8",
     )

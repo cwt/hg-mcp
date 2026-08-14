@@ -142,7 +142,7 @@ class TestHgImport:
 
         # Strip the revision
         subprocess.run(
-            ["hg", "strip", "-r", "3", "--keep"],
+            ["hg", "--config", "extensions.strip=", "strip", "-r", "3", "--keep"],
             cwd=hg_repo_with_commits,
             check=True,
             capture_output=True,
@@ -165,7 +165,7 @@ class TestHgImport:
         )
 
         subprocess.run(
-            ["hg", "strip", "-r", "3", "--keep"],
+            ["hg", "--config", "extensions.strip=", "strip", "-r", "3", "--keep"],
             cwd=hg_repo_with_commits,
             check=True,
             capture_output=True,

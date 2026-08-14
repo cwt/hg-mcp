@@ -18,6 +18,7 @@ from unittest.mock import patch
 import pytest
 
 from hg_mcp.helpers import (
+    JSON_SUPPORTED_COMMANDS,
     _check_git_remotes,
     _get_extension_hint,
     _get_git_branches,
@@ -165,3 +166,17 @@ class TestHelpersExtended:
                 ):
                     result = await sync_git_bookmarks(tmp_path)
                     assert "hg gexport skipped" in result
+
+    def test_json_supported_commands_membership(self) -> None:
+        """Test JSON_SUPPORTED_COMMANDS includes identify and phase, excludes mutations."""
+        assert "identify" in JSON_SUPPORTED_COMMANDS
+        assert "id" in JSON_SUPPORTED_COMMANDS
+        assert "phase" in JSON_SUPPORTED_COMMANDS
+        assert "rebase" not in JSON_SUPPORTED_COMMANDS
+        assert "strip" not in JSON_SUPPORTED_COMMANDS
+
+    def test_get_extension_hint_empty_and_non_error(self) -> None:
+        """Test _get_extension_hint handles empty args and non-extension errors."""
+        assert _get_extension_hint("some error", []) == ""
+        assert _get_extension_hint("file not found", ["topic"]) == ""
+        assert "topic" in _get_extension_hint("hg: unknown command 'topic'", ["topic"])

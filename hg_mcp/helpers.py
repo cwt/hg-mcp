@@ -8,8 +8,9 @@ import asyncio
 import json
 import secrets
 import subprocess
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 
 class APIKeyMiddleware:
@@ -92,7 +93,8 @@ def validate_path_in_jail(path: Path) -> Path:
         resolved.relative_to(mcp.jail_path)
     except ValueError:
         raise ValueError(
-            f"Path '{resolved}' is outside the allowed jail directory '{mcp.jail_path}'. "
+            f"Path '{resolved}' is outside the allowed jail directory "
+            f"'{mcp.jail_path}'. "
             f"Access is restricted to '{mcp.jail_path}' and its subdirectories."
         )
 
@@ -103,7 +105,13 @@ def validate_path_in_jail(path: Path) -> Path:
 EXTENSION_HINTS: dict[str, str] = {
     "topic": "topic",
     "topics": "topic",
+    "absorb": "absorb",
     "evolve": "evolve",
+    "prune": "evolve",
+    "fold": "evolve",
+    "metaedit": "evolve",
+    "split": "evolve",
+    "uncommit": "evolve",
     "strip": "strip",
     "rebase": "rebase",
     "histedit": "histedit",
@@ -112,6 +120,7 @@ EXTENSION_HINTS: dict[str, str] = {
     "lfile": "largefiles",
     "git-cleanup": "hggit",
 }
+
 
 # Commands that support JSON output format with -T json
 JSON_SUPPORTED_COMMANDS: frozenset[str] = frozenset(
@@ -124,6 +133,7 @@ JSON_SUPPORTED_COMMANDS: frozenset[str] = frozenset(
         "files",
         "heads",
         "id",
+        "identify",
         "incoming",
         "log",
         "lfile",
@@ -131,10 +141,9 @@ JSON_SUPPORTED_COMMANDS: frozenset[str] = frozenset(
         "outgoing",
         "parents",
         "paths",
-        "rebase",
+        "phase",
         "resolve",
         "status",
-        "strip",
         "tags",
         "topics",
         "verify",
@@ -312,10 +321,8 @@ def _get_extension_hint(error_text: str, command_args: list[str]) -> str:
     ext = EXTENSION_HINTS.get(cmd)
 
     # Check for extension-related errors
-    is_extension_error = (
-        "unknown command" in error_text.lower()
-        or "unknown command" in error_text
-        or (f"'{cmd}'" in error_text and "unknown" in error_text.lower())
+    is_extension_error = "unknown command" in error_text.lower() or (
+        f"'{cmd}'" in error_text and "unknown" in error_text.lower()
     )
 
     if not is_extension_error:
