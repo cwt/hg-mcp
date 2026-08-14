@@ -146,8 +146,9 @@ async def hg_tag(
 
     if remove:
         args.append("--remove")
-
-    args.extend(["-m", f"Add tag {safe_name}"])
+        args.extend(["-m", f"Remove tag {safe_name}"])
+    else:
+        args.extend(["-m", f"Add tag {safe_name}"])
     args.append(safe_name)
 
     if revision:

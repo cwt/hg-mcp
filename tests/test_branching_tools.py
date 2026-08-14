@@ -113,6 +113,14 @@ class TestHgTag:
         )
         assert isinstance(result, str)
 
+        # Verify commit message on removal
+        from hg_mcp.helpers import run_hg_command
+
+        log_msg = await run_hg_command(
+            ["log", "-l", "1", "-T", "{desc}"], cwd=hg_repo_with_tags
+        )
+        assert f"Remove tag {tag_to_remove}" in log_msg
+
     @pytest.mark.asyncio
     async def test_tag_invalid_name(self, hg_repo: Path) -> None:
         """Test creating tag with invalid name."""
