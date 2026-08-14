@@ -425,12 +425,15 @@ async def hg_histedit(
             if has_mess_or_fold:
                 # Create a temp editor script that keeps the original message
                 # by copying stdin to the file (non-interactive)
-                editor_script = Path(tempfile.gettempdir()) / "hg_mcp_editor.sh"
-                editor_script.write_text(
-                    "#!/bin/bash\n# Non-interactive editor for histedit\n"
-                    "# Keeps the original message by doing nothing\n"
-                    "exit 0\n"
-                )
+                with tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".sh", prefix="hg_mcp_editor_", delete=False
+                ) as ef:
+                    ef.write(
+                        "#!/bin/sh\n# Non-interactive editor for histedit\n"
+                        "# Keeps the original message by doing nothing\n"
+                        "exit 0\n"
+                    )
+                    editor_script = Path(ef.name)
                 editor_script.chmod(0o755)
         else:
             # File path
@@ -441,21 +444,22 @@ async def hg_histedit(
     if editor_script and editor_script.exists():
         env = {"EDITOR": str(editor_script), "VISUAL": str(editor_script)}
 
-    result = await run_hg_command(args, cwd=path, env=env)
+    try:
+        result = await run_hg_command(args, cwd=path, env=env)
+    finally:
+        # Clean up temp files
+        if commands_file_exists and commands_file:
+            try:
+                Path(commands_file).unlink(missing_ok=True)
+            except Exception:
+                pass
 
-    # Clean up temp files
-    if commands_file_exists:
-        try:
-            Path(commands_file).unlink()
-        except Exception:
-            pass
-
-    # Clean up editor script
-    if editor_script and editor_script.exists():
-        try:
-            editor_script.unlink()
-        except Exception:
-            pass
+        # Clean up editor script
+        if editor_script is not None:
+            try:
+                editor_script.unlink(missing_ok=True)
+            except Exception:
+                pass
 
     return result
 

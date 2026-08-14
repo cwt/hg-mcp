@@ -123,7 +123,8 @@ class TestHgHisteditExtended:
         result = await hg_histedit(
             str(hg_repo_with_commits), revision="3", commands="mess 3\npick 4"
         )
-        # Even if it fails due to some environment issues, it should have executed the script creation path
+        # Even if it fails due to environment issues,
+        # it should have executed the script creation path
         assert isinstance(result, str)
 
 
