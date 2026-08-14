@@ -12,6 +12,12 @@ class TestMainExtended:
     def setup_method(self) -> None:
         """Reset mcp state before each test."""
         mcp._jail_path = None
+        mcp._hg_path = None
+
+    def teardown_method(self) -> None:
+        """Clean up mcp state after each test."""
+        mcp._jail_path = None
+        mcp._hg_path = None
 
     @patch("argparse.ArgumentParser.parse_args")
     @patch("hg_mcp.server.mcp.run")
@@ -29,6 +35,7 @@ class TestMainExtended:
             port=8000,
             host="0.0.0.0",
             api_key=None,
+            mercurial=None,
         )
         main()
         mock_run.assert_called_once_with(transport="stdio")
@@ -45,6 +52,7 @@ class TestMainExtended:
             port=8000,
             host="0.0.0.0",
             api_key=None,
+            mercurial=None,
         )
         main()
         assert mcp.jail_path is not None
@@ -65,6 +73,7 @@ class TestMainExtended:
             port=8000,
             host="0.0.0.0",
             api_key=None,
+            mercurial=None,
         )
         main()
         mock_uvicorn.assert_called_once()
@@ -85,6 +94,7 @@ class TestMainExtended:
             port=8001,
             host="127.0.0.1",
             api_key=None,
+            mercurial=None,
         )
         main()
         mock_uvicorn.assert_called_once()
@@ -109,6 +119,7 @@ class TestMainExtended:
             port=8000,
             host="0.0.0.0",
             api_key=None,
+            mercurial=None,
         )
         http_app = MagicMock()
         http_app.router.lifespan_context = MagicMock()
@@ -132,6 +143,7 @@ class TestMainExtended:
             port=8000,
             host="0.0.0.0",
             api_key="secret-key",
+            mercurial=None,
         )
         mock_app = MagicMock()
         mock_sse_app.return_value = mock_app
@@ -154,9 +166,17 @@ class TestMainExtended:
             port=8000,
             host="0.0.0.0",
             api_key=None,
+            mercurial=None,
         )
         main()
         mock_exit.assert_called_once_with(0)
+
+    def test_hg_path_setter_and_reset(self) -> None:
+        """Test that hg_path can be set and reset to None."""
+        mcp.hg_path = "/usr/bin/hg"
+        assert mcp.hg_path == "/usr/bin/hg"
+        mcp.hg_path = None
+        assert mcp.hg_path is None
 
 
 class TestServerMain:

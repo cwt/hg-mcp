@@ -4,26 +4,25 @@ Creates and configures the FastMCP server for hg-mcp operations.
 """
 
 from pathlib import Path
-from typing import Optional, Union
 
 from mcp.server.fastmcp import FastMCP
 
 
-class HG_MCP(FastMCP):
+class HG_MCP(FastMCP):  # noqa: N801
     """Custom FastMCP subclass with jail path and hg executable path support."""
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)  # type: ignore[arg-type]
-        self._jail_path: Optional[Path] = None
-        self._hg_path: Optional[str] = None
+        self._jail_path: Path | None = None
+        self._hg_path: str | None = None
 
     @property
-    def jail_path(self) -> Optional[Path]:
+    def jail_path(self) -> Path | None:
         """Get the jail path restriction."""
         return self._jail_path
 
     @jail_path.setter
-    def jail_path(self, value: Optional[Union[str, Path]]) -> None:
+    def jail_path(self, value: str | Path | None) -> None:
         """Set the jail path restriction. Immutable once set to a non-None value."""
         if value is None:
             return
@@ -33,20 +32,19 @@ class HG_MCP(FastMCP):
             if self._jail_path == new_path:
                 return
             raise RuntimeError(
-                f"jail_path is immutable once set (current: {self._jail_path}, attempted: {new_path})"
+                f"jail_path is immutable once set "
+                f"(current: {self._jail_path}, attempted: {new_path})"
             )
         self._jail_path = new_path
 
     @property
-    def hg_path(self) -> Optional[str]:
+    def hg_path(self) -> str | None:
         """Get the custom path to the Mercurial executable."""
         return self._hg_path
 
     @hg_path.setter
-    def hg_path(self, value: Optional[str]) -> None:
+    def hg_path(self, value: str | None) -> None:
         """Set the custom path to the Mercurial executable."""
-        if value is None:
-            return
         self._hg_path = value
 
 

@@ -1,6 +1,7 @@
 #!/bin/bash
 
-poetry run black -t py312 -l 80 $(find . -name "*.py")
+poetry run black -t py310 -l 88 hg_mcp tests
 
-# Remove trailing whitespace in all .py files
-find . -name "*.py" -exec sed -i 's/[[:space:]]*$//' {} \;
+# Remove trailing whitespace in project .py files
+find hg_mcp tests -name "*.py" -exec sed -i 's/[[:space:]]*$//' {} \;
+
