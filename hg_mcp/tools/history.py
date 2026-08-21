@@ -5,7 +5,7 @@ Provides tools for viewing commit history, repository state, and integrity.
 
 from pathlib import Path
 
-from mcp.types import TextContent
+from mcp.types import TextContent, ToolAnnotations
 
 from hg_mcp.decorators import handle_repo_errors, json_tool
 from hg_mcp.helpers import (
@@ -18,7 +18,14 @@ from hg_mcp.helpers import (
 from hg_mcp.server import mcp
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=False,
+        destructiveHint=False,
+        idempotentHint=False,
+        openWorldHint=False,
+    )
+)
 @handle_repo_errors
 async def hg_bisect(
     repo_path: str = ".",
@@ -52,26 +59,36 @@ async def hg_bisect(
         - hg_bisect(command="bad", revision="tip") -> Mark tip as bad
         - hg_bisect(command="good", revision="100") -> Mark r100 as good
     """
-    path = validate_repo_path(repo_path)
-    args = ["bisect"]
+    try:
+        path = validate_repo_path(repo_path)
+        args = ["bisect"]
 
-    cmd = command.strip().lower()
-    if cmd in ("reset", "good", "bad", "skip"):
-        args.extend(["--" + cmd])
-        if revision:
-            try:
-                safe_revision = sanitize_input(revision, max_length=200)
-            except ValueError as e:
-                return f"Error: Invalid revision - {e}"
-            args.append(safe_revision)
+        cmd = command.strip().lower()
+        if cmd in ("reset", "good", "bad", "skip"):
+            args.extend(["--" + cmd])
+            if revision:
+                try:
+                    safe_revision = sanitize_input(revision, max_length=200)
+                except ValueError as e:
+                    return f"Error: Invalid revision - {e}"
+                args.append(safe_revision)
 
-    if extend:
-        args.append("--extend")
+        if extend:
+            args.append("--extend")
 
-    return await run_hg_command(args, cwd=path)
+        return await run_hg_command(args, cwd=path)
+    except Exception as e:
+        return f"Error: {e}"
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False,
+    )
+)
 @handle_repo_errors
 @json_tool
 async def hg_annotate(
@@ -84,17 +101,27 @@ async def hg_annotate(
     Equivalent to 'git blame'. Displays which changeset and user last modified
     each line in the specified files.
     """
-    path = validate_repo_path(repo_path)
-    args = ["annotate"]
-    if revision:
-        args.extend(["-r", revision])
-    files_list = parse_list_param(files)
-    if files_list:
-        args.extend(files_list)
-    return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
+    try:
+        path = validate_repo_path(repo_path)
+        args = ["annotate"]
+        if revision:
+            args.extend(["-r", revision])
+        files_list = parse_list_param(files)
+        if files_list:
+            args.extend(files_list)
+        return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
+    except Exception as e:
+        return f"Error: {e}"  # type: ignore[return-value]
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=False,
+        destructiveHint=False,
+        idempotentHint=False,
+        openWorldHint=False,
+    )
+)
 @handle_repo_errors
 async def hg_backout(
     revision: str,
@@ -115,37 +142,47 @@ async def hg_backout(
         merge: If True, automatically merge the result (creates commit)
         message: Commit message (required if merge=True, ignored otherwise)
     """
-    path = validate_repo_path(repo_path)
-
-    # Sanitize revision
     try:
-        safe_revision = sanitize_input(revision, max_length=200)
-    except ValueError as e:
-        return f"Error: Invalid revision - {e}"
+        path = validate_repo_path(repo_path)
 
-    args = ["backout"]
-    if merge:
-        args.append("--merge")
-        if message:
-            try:
-                safe_message = sanitize_input(
-                    message, max_length=10000, allow_shell_chars=True
-                )
-            except ValueError as e:
-                return f"Error: Invalid commit message - {e}"
-            args.extend(["-m", safe_message])
+        # Sanitize revision
+        try:
+            safe_revision = sanitize_input(revision, max_length=200)
+        except ValueError as e:
+            return f"Error: Invalid revision - {e}"
 
+        args = ["backout"]
+        if merge:
+            args.append("--merge")
+            if message:
+                try:
+                    safe_message = sanitize_input(
+                        message, max_length=10000, allow_shell_chars=True
+                    )
+                except ValueError as e:
+                    return f"Error: Invalid commit message - {e}"
+                args.extend(["-m", safe_message])
+
+            else:
+                # Default message to avoid interactive editor
+                args.extend(["-m", f"Backed out changeset {safe_revision}"])
         else:
-            # Default message to avoid interactive editor
-            args.extend(["-m", f"Backed out changeset {safe_revision}"])
-    else:
-        # Don't commit, just prepare the backout
-        args.append("--no-commit")
-    args.append(safe_revision)
-    return await run_hg_command(args, cwd=path)
+            # Don't commit, just prepare the backout
+            args.append("--no-commit")
+        args.append(safe_revision)
+        return await run_hg_command(args, cwd=path)
+    except Exception as e:
+        return f"Error: {e}"
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False,
+    )
+)
 @handle_repo_errors
 async def hg_export(
     repo_path: str = ".",
@@ -162,25 +199,35 @@ async def hg_export(
         revisions: List of revision IDs to export (defaults to all unpushed)
         output: Output file path pattern (e.g., "patch-%r.patch")
     """
-    path = validate_repo_path(repo_path)
-    args = ["export"]
-    if output:
-        try:
-            safe_output = sanitize_input(output, max_length=500)
-        except ValueError as e:
-            return f"Error: Invalid output path - {e}"
-        args.extend(["-o", safe_output])
-    revisions_list = parse_list_param(revisions)
-    for rev in revisions_list:
-        try:
-            safe_rev = sanitize_input(rev, max_length=200)
-        except ValueError as e:
-            return f"Error: Invalid revision - {e}"
-        args.append(safe_rev)
-    return await run_hg_command(args, cwd=path)
+    try:
+        path = validate_repo_path(repo_path)
+        args = ["export"]
+        if output:
+            try:
+                safe_output = sanitize_input(output, max_length=500)
+            except ValueError as e:
+                return f"Error: Invalid output path - {e}"
+            args.extend(["-o", safe_output])
+        revisions_list = parse_list_param(revisions)
+        for rev in revisions_list:
+            try:
+                safe_rev = sanitize_input(rev, max_length=200)
+            except ValueError as e:
+                return f"Error: Invalid revision - {e}"
+            args.append(safe_rev)
+        return await run_hg_command(args, cwd=path)
+    except Exception as e:
+        return f"Error: {e}"
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=False,
+        destructiveHint=False,
+        idempotentHint=False,
+        openWorldHint=False,
+    )
+)
 @handle_repo_errors
 async def hg_import(
     patches: list[str] | str,
@@ -197,16 +244,26 @@ async def hg_import(
         repo_path: The repository path
         no_commit: If True, only apply patches without committing
     """
-    path = validate_repo_path(repo_path)
-    args = ["import"]
-    if no_commit:
-        args.append("--no-commit")
-    patches_list = parse_list_param(patches)
-    args.extend(patches_list)
-    return await run_hg_command(args, cwd=path)
+    try:
+        path = validate_repo_path(repo_path)
+        args = ["import"]
+        if no_commit:
+            args.append("--no-commit")
+        patches_list = parse_list_param(patches)
+        args.extend(patches_list)
+        return await run_hg_command(args, cwd=path)
+    except Exception as e:
+        return f"Error: {e}"
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False,
+    )
+)
 @handle_repo_errors
 @json_tool
 async def hg_heads(
@@ -224,16 +281,26 @@ async def hg_heads(
         branch: Filter to specific branch name
         active: If True, only show the active head of each branch
     """
-    path = validate_repo_path(repo_path)
-    args = ["heads"]
-    if branch:
-        args.append(branch)
-    if active:
-        args.append("--active")
-    return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
+    try:
+        path = validate_repo_path(repo_path)
+        args = ["heads"]
+        if branch:
+            args.append(branch)
+        if active:
+            args.append("--active")
+        return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
+    except Exception as e:
+        return f"Error: {e}"  # type: ignore[return-value]
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=True,
+    )
+)
 @handle_repo_errors
 @json_tool
 async def hg_incoming(
@@ -249,14 +316,24 @@ async def hg_incoming(
         repo_path: The repository path
         source: Remote source to check (defaults to default path)
     """
-    path = validate_repo_path(repo_path)
-    args = ["incoming"]
-    if source:
-        args.append(source)
-    return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
+    try:
+        path = validate_repo_path(repo_path)
+        args = ["incoming"]
+        if source:
+            args.append(source)
+        return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
+    except Exception as e:
+        return f"Error: {e}"  # type: ignore[return-value]
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=True,
+    )
+)
 @handle_repo_errors
 @json_tool
 async def hg_outgoing(
@@ -272,14 +349,24 @@ async def hg_outgoing(
         repo_path: The repository path
         destination: Remote destination to check (defaults to default path)
     """
-    path = validate_repo_path(repo_path)
-    args = ["outgoing"]
-    if destination:
-        args.append(destination)
-    return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
+    try:
+        path = validate_repo_path(repo_path)
+        args = ["outgoing"]
+        if destination:
+            args.append(destination)
+        return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
+    except Exception as e:
+        return f"Error: {e}"  # type: ignore[return-value]
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False,
+    )
+)
 @handle_repo_errors
 @json_tool
 async def hg_files(repo_path: str = ".") -> list[TextContent]:
@@ -287,11 +374,21 @@ async def hg_files(repo_path: str = ".") -> list[TextContent]:
 
     Shows all files tracked by Mercurial in the current revision.
     """
-    path = validate_repo_path(repo_path)
-    return await run_hg_command(["files"], cwd=path)  # type: ignore[return-value]
+    try:
+        path = validate_repo_path(repo_path)
+        return await run_hg_command(["files"], cwd=path)  # type: ignore[return-value]
+    except Exception as e:
+        return f"Error: {e}"  # type: ignore[return-value]
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False,
+    )
+)
 @handle_repo_errors
 async def hg_summary(repo_path: str = ".") -> str:
     """Summarize working directory state.
@@ -302,11 +399,21 @@ async def hg_summary(repo_path: str = ".") -> str:
     - Pending commits, merges, and updates
     - Repository status
     """
-    path = validate_repo_path(repo_path)
-    return await run_hg_command(["summary"], cwd=path)
+    try:
+        path = validate_repo_path(repo_path)
+        return await run_hg_command(["summary"], cwd=path)
+    except Exception as e:
+        return f"Error: {e}"
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False,
+    )
+)
 @handle_repo_errors
 @json_tool
 async def hg_verify(repo_path: str = ".") -> list[TextContent]:
@@ -315,11 +422,21 @@ async def hg_verify(repo_path: str = ".") -> list[TextContent]:
     Checks the repository for corruption and reports any issues found.
     This is a read-only operation that validates repository integrity.
     """
-    path = validate_repo_path(repo_path)
-    return await run_hg_command(["verify"], cwd=path)  # type: ignore[return-value]
+    try:
+        path = validate_repo_path(repo_path)
+        return await run_hg_command(["verify"], cwd=path)  # type: ignore[return-value]
+    except Exception as e:
+        return f"Error: {e}"  # type: ignore[return-value]
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False,
+    )
+)
 @handle_repo_errors
 @json_tool
 async def hg_identify(
@@ -335,29 +452,49 @@ async def hg_identify(
         repo_path: The repository path
         revision: Revision to identify (defaults to working directory parent)
     """
-    path = validate_repo_path(repo_path)
-    args = ["identify"]
-    if revision:
-        args.extend(["-r", revision])
-    return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
+    try:
+        path = validate_repo_path(repo_path)
+        args = ["identify"]
+        if revision:
+            args.extend(["-r", revision])
+        return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
+    except Exception as e:
+        return f"Error: {e}"  # type: ignore[return-value]
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False,
+    )
+)
 @handle_repo_errors
 async def hg_help(repo_path: str = ".", topic: str = "") -> str:
     """Get help on Mercurial commands and concepts."""
-    # Special handling: hg_help can work without a repo, but prefers one.
     try:
-        path = validate_repo_path(repo_path)
-    except ValueError:
-        path = None
+        # Special handling: hg_help can work without a repo, but prefers one.
+        try:
+            path = validate_repo_path(repo_path)
+        except ValueError:
+            path = None
 
-    if topic:
-        return await run_hg_command(["help", topic], cwd=path)
-    return await run_hg_command(["help"], cwd=path)
+        if topic:
+            return await run_hg_command(["help", topic], cwd=path)
+        return await run_hg_command(["help"], cwd=path)
+    except Exception as e:
+        return f"Error: {e}"
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=False,
+        destructiveHint=True,
+        idempotentHint=False,
+        openWorldHint=False,
+    )
+)
 @handle_repo_errors
 async def hg_histedit(
     repo_path: str = ".",
@@ -389,139 +526,152 @@ async def hg_histedit(
     """
     import tempfile
 
-    path = validate_repo_path(repo_path)
-    args = ["histedit", "--noninteractive"]
-
-    # Track temp files for cleanup
-    commands_file_exists = False
-    commands_file = ""
-    editor_script = None
-
-    if revision:
-        args.extend(["-r", revision])
-
-    # Support inline commands by creating a temp file
-    if commands:
-        # Check if commands is a file path or inline commands
-        starts_with_cmd = commands.strip().startswith(
-            ("pick", "drop", "fold", "roll", "edit", "mess", "base")
-        )
-        if "\n" in commands or starts_with_cmd:
-            # Inline commands - create temp file
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".histedit", delete=False
-            ) as f:
-                f.write(commands)
-                commands_file = f.name
-                commands_file_exists = True
-            args.extend(["--commands", commands_file])
-
-            # Check if we need a non-interactive editor for mess/fold commands
-            has_mess_or_fold = any(
-                line.strip().startswith(("mess ", "fold ", "m ", "f "))
-                for line in commands.split("\n")
-                if line.strip() and not line.startswith("#")
-            )
-            if has_mess_or_fold:
-                # Create a temp editor script that keeps the original message
-                # by copying stdin to the file (non-interactive)
-                with tempfile.NamedTemporaryFile(
-                    mode="w", suffix=".sh", prefix="hg_mcp_editor_", delete=False
-                ) as ef:
-                    ef.write(
-                        "#!/bin/sh\n# Non-interactive editor for histedit\n"
-                        "# Keeps the original message by doing nothing\n"
-                        "exit 0\n"
-                    )
-                    editor_script = Path(ef.name)
-                editor_script.chmod(0o755)
-        else:
-            # File path
-            args.extend(["--commands", commands])
-
-    # Prepare environment with non-interactive editor if needed
-    env = None
-    if editor_script and editor_script.exists():
-        env = {"EDITOR": str(editor_script), "VISUAL": str(editor_script)}
-
     try:
-        result = await run_hg_command(args, cwd=path, env=env)
-    finally:
-        # Clean up temp files
-        if commands_file_exists and commands_file:
-            try:
-                Path(commands_file).unlink(missing_ok=True)
-            except Exception:
-                pass
+        path = validate_repo_path(repo_path)
+        args = ["histedit", "--noninteractive"]
 
-        # Clean up editor script
-        if editor_script is not None:
-            try:
-                editor_script.unlink(missing_ok=True)
-            except Exception:
-                pass
+        # Track temp files for cleanup
+        commands_file_exists = False
+        commands_file = ""
+        editor_script = None
 
-    return result
+        if revision:
+            args.extend(["-r", revision])
+
+        # Support inline commands by creating a temp file
+        if commands:
+            # Check if commands is a file path or inline commands
+            starts_with_cmd = commands.strip().startswith(
+                ("pick", "drop", "fold", "roll", "edit", "mess", "base")
+            )
+            if "\n" in commands or starts_with_cmd:
+                # Inline commands - create temp file
+                with tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".histedit", delete=False
+                ) as f:
+                    f.write(commands)
+                    commands_file = f.name
+                    commands_file_exists = True
+                args.extend(["--commands", commands_file])
+
+                # Check if we need a non-interactive editor for mess/fold commands
+                has_mess_or_fold = any(
+                    line.strip().startswith(("mess ", "fold ", "m ", "f "))
+                    for line in commands.split("\n")
+                    if line.strip() and not line.startswith("#")
+                )
+                if has_mess_or_fold:
+                    # Create a temp editor script that keeps the original message
+                    # by copying stdin to the file (non-interactive)
+                    with tempfile.NamedTemporaryFile(
+                        mode="w", suffix=".sh", prefix="hg_mcp_editor_", delete=False
+                    ) as ef:
+                        ef.write(
+                            "#!/bin/sh\n# Non-interactive editor for histedit\n"
+                            "# Keeps the original message by doing nothing\n"
+                            "exit 0\n"
+                        )
+                        editor_script = Path(ef.name)
+                    editor_script.chmod(0o755)
+            else:
+                # File path
+                args.extend(["--commands", commands])
+
+        # Prepare environment with non-interactive editor if needed
+        env = None
+        if editor_script and editor_script.exists():
+            env = {"EDITOR": str(editor_script), "VISUAL": str(editor_script)}
+
+        try:
+            result = await run_hg_command(args, cwd=path, env=env)
+        finally:
+            # Clean up temp files
+            if commands_file_exists and commands_file:
+                try:
+                    Path(commands_file).unlink(missing_ok=True)
+                except Exception:
+                    pass
+
+            # Clean up editor script
+            if editor_script is not None:
+                try:
+                    editor_script.unlink(missing_ok=True)
+                except Exception:
+                    pass
+
+        return result
+    except Exception as e:
+        return f"Error: {e}"
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False,
+    )
+)
 @handle_repo_errors
 @json_tool
 async def hg_largefiles(repo_path: str = ".") -> list[TextContent]:
     """Show large files tracked by the largefiles extension."""
-    path = validate_repo_path(repo_path)
-    hglf_path = path / ".hglf"
-
-    if not hglf_path.is_dir():
-        msg = "No largefiles found in this repository."
-        return [TextContent(type="text", text=msg)]
-
-    largefiles = []
     try:
-        import os
+        path = validate_repo_path(repo_path)
+        hglf_path = path / ".hglf"
 
-        for root, dirs, files in os.walk(str(hglf_path)):
-            for filename in files:
-                if filename == "__MACOSX":
-                    continue
+        if not hglf_path.is_dir():
+            msg = "No largefiles found in this repository."
+            return [TextContent(type="text", text=msg)]
 
-                file_path = Path(root) / filename
-                rel_path = str(file_path.relative_to(hglf_path))
+        largefiles = []
+        try:
+            import os
 
-                size = 0
-                working_copy_file = path / rel_path
-                if working_copy_file.is_file():
-                    try:
-                        size = working_copy_file.stat().st_size
-                    except OSError:
-                        size = 0
+            for root, dirs, files in os.walk(str(hglf_path)):
+                for filename in files:
+                    if filename == "__MACOSX":
+                        continue
 
-                if size == 0:
-                    try:
-                        content = file_path.read_text(encoding="utf-8").strip()
-                        lines = content.split("\n")
-                        if len(lines) >= 2 and lines[1].isdigit():
-                            size = int(lines[1])
-                    except (ValueError, UnicodeDecodeError, OSError):
-                        size = 0
+                    file_path = Path(root) / filename
+                    rel_path = str(file_path.relative_to(hglf_path))
 
-                largefiles.append((rel_path, size))
+                    size = 0
+                    working_copy_file = path / rel_path
+                    if working_copy_file.is_file():
+                        try:
+                            size = working_copy_file.stat().st_size
+                        except OSError:
+                            size = 0
 
+                    if size == 0:
+                        try:
+                            content = file_path.read_text(encoding="utf-8").strip()
+                            lines = content.split("\n")
+                            if len(lines) >= 2 and lines[1].isdigit():
+                                size = int(lines[1])
+                        except (ValueError, UnicodeDecodeError, OSError):
+                            size = 0
+
+                    largefiles.append((rel_path, size))
+
+        except Exception as e:
+            msg = f"Error reading largefiles: {e}"
+            return [TextContent(type="text", text=msg)]
+
+        if not largefiles:
+            msg = "No largefiles found in this repository."
+            return [TextContent(type="text", text=msg)]
+
+        def _get_largefile_size(item: tuple[str, int]) -> int:
+            return item[1]
+
+        largefiles.sort(key=_get_largefile_size, reverse=True)
+
+        lines = ["Largefiles in repository:", "-" * 50]
+        for filename, size in largefiles:
+            lines.append(f"  {filename}: {format_bytes(size)}")
+
+        return [TextContent(type="text", text="\n".join(lines))]
     except Exception as e:
-        msg = f"Error reading largefiles: {e}"
-        return [TextContent(type="text", text=msg)]
-
-    if not largefiles:
-        msg = "No largefiles found in this repository."
-        return [TextContent(type="text", text=msg)]
-
-    def _get_largefile_size(item: tuple[str, int]) -> int:
-        return item[1]
-
-    largefiles.sort(key=_get_largefile_size, reverse=True)
-
-    lines = ["Largefiles in repository:", "-" * 50]
-    for filename, size in largefiles:
-        lines.append(f"  {filename}: {format_bytes(size)}")
-
-    return [TextContent(type="text", text="\n".join(lines))]
+        return [TextContent(type="text", text=f"Error: {e}")]

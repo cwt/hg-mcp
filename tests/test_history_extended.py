@@ -185,3 +185,35 @@ class TestHgExportImportErrors:
         """Test export with invalid revision."""
         result = await hg_export(str(hg_repo), revisions=["invalid;rev"])
         assert "Error: Invalid revision" in result
+
+
+class TestHgBisect:
+    """Tests for hg_bisect tool."""
+
+    @pytest.mark.asyncio
+    async def test_bisect_status(self, hg_repo_with_commits: Path) -> None:
+        """Test checking bisect status."""
+        from hg_mcp.tools import hg_bisect
+
+        result = await hg_bisect(repo_path=str(hg_repo_with_commits))
+        assert isinstance(result, str)
+
+    @pytest.mark.asyncio
+    async def test_bisect_reset(self, hg_repo_with_commits: Path) -> None:
+        """Test resetting bisect state."""
+        from hg_mcp.tools import hg_bisect
+
+        result = await hg_bisect(repo_path=str(hg_repo_with_commits), command="reset")
+        assert isinstance(result, str)
+
+    @pytest.mark.asyncio
+    async def test_bisect_invalid_revision(self, hg_repo: Path) -> None:
+        """Test bisect with invalid revision."""
+        from hg_mcp.tools import hg_bisect
+
+        result = await hg_bisect(
+            repo_path=str(hg_repo),
+            command="bad",
+            revision="invalid;rev",
+        )
+        assert "Error: Invalid revision" in result

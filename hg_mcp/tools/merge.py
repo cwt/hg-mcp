@@ -3,7 +3,7 @@
 Provides tools for merging revisions and managing merge conflicts.
 """
 
-from mcp.types import TextContent
+from mcp.types import TextContent, ToolAnnotations
 
 from hg_mcp.decorators import handle_repo_errors, json_tool
 from hg_mcp.helpers import (
@@ -15,7 +15,14 @@ from hg_mcp.helpers import (
 from hg_mcp.server import mcp
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=False,
+        destructiveHint=False,
+        idempotentHint=False,
+        openWorldHint=False,
+    )
+)
 @handle_repo_errors
 async def hg_merge(repo_path: str = ".", revision: str = "") -> str:
     """Merge another revision into the current working directory.
@@ -24,18 +31,28 @@ async def hg_merge(repo_path: str = ".", revision: str = "") -> str:
 
     **Note:** Mercurial requires explicit merges; no fast-forward by default.
     """
-    path = validate_repo_path(repo_path)
-    args = ["merge"]
-    if revision:
-        try:
-            safe_revision = sanitize_input(revision, max_length=200)
-        except ValueError as e:
-            return f"Error: Invalid revision - {e}"
-        args.append(safe_revision)
-    return await run_hg_command(args, cwd=path)
+    try:
+        path = validate_repo_path(repo_path)
+        args = ["merge"]
+        if revision:
+            try:
+                safe_revision = sanitize_input(revision, max_length=200)
+            except ValueError as e:
+                return f"Error: Invalid revision - {e}"
+            args.append(safe_revision)
+        return await run_hg_command(args, cwd=path)
+    except Exception as e:
+        return f"Error: {e}"
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False,
+    )
+)
 @handle_repo_errors
 @json_tool
 async def hg_resolve(repo_path: str = ".") -> list[TextContent]:
@@ -43,11 +60,21 @@ async def hg_resolve(repo_path: str = ".") -> list[TextContent]:
 
     Equivalent to 'git status' during a merge.
     """
-    path = validate_repo_path(repo_path)
-    return await run_hg_command(["resolve", "--list"], cwd=path)  # type: ignore[return-value]
+    try:
+        path = validate_repo_path(repo_path)
+        return await run_hg_command(["resolve", "--list"], cwd=path)  # type: ignore[return-value]
+    except Exception as e:
+        return f"Error: {e}"  # type: ignore[return-value]
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=False,
+        destructiveHint=False,
+        idempotentHint=False,
+        openWorldHint=False,
+    )
+)
 @handle_repo_errors
 async def hg_graft(
     repo_path: str = ".",
@@ -81,37 +108,40 @@ async def hg_graft(
         - hg_graft(continue_op=True) -> Continue interrupted graft
         - hg_graft(abort=True) -> Abort interrupted graft
     """
-    path = validate_repo_path(repo_path)
-    args = ["graft"]
+    try:
+        path = validate_repo_path(repo_path)
+        args = ["graft"]
 
-    if continue_op:
-        args.append("--continue")
+        if continue_op:
+            args.append("--continue")
+            return await run_hg_command(args, cwd=path)
+
+        if abort:
+            args.append("--abort")
+            return await run_hg_command(args, cwd=path)
+
+        if stop:
+            args.append("--stop")
+            return await run_hg_command(args, cwd=path)
+
+        if no_commit:
+            args.append("--no-commit")
+
+        if log:
+            args.append("--log")
+
+        if force:
+            args.append("--force")
+
+        revisions_list = parse_list_param(revisions)
+        if revisions_list:
+            for rev in revisions_list:
+                try:
+                    safe_rev = sanitize_input(rev, max_length=200)
+                except ValueError as e:
+                    return f"Error: Invalid revision - {e}"
+                args.extend(["-r", safe_rev])
+
         return await run_hg_command(args, cwd=path)
-
-    if abort:
-        args.append("--abort")
-        return await run_hg_command(args, cwd=path)
-
-    if stop:
-        args.append("--stop")
-        return await run_hg_command(args, cwd=path)
-
-    if no_commit:
-        args.append("--no-commit")
-
-    if log:
-        args.append("--log")
-
-    if force:
-        args.append("--force")
-
-    revisions_list = parse_list_param(revisions)
-    if revisions_list:
-        for rev in revisions_list:
-            try:
-                safe_rev = sanitize_input(rev, max_length=200)
-            except ValueError as e:
-                return f"Error: Invalid revision - {e}"
-            args.extend(["-r", safe_rev])
-
-    return await run_hg_command(args, cwd=path)
+    except Exception as e:
+        return f"Error: {e}"

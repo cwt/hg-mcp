@@ -101,5 +101,17 @@ def handle_repo_errors(
                     )
                 ]
             return error_msg
+        except (RuntimeError, OSError) as e:
+            error_msg = f"Error: {e}"
+            is_json_tool = getattr(func, "_is_json_tool", False)
+            if is_json_tool:
+                return [
+                    TextContent(
+                        type="text",
+                        text=error_msg,
+                        annotations=AnnotationsType(audience=["user"], priority=1.0),
+                    )
+                ]
+            return error_msg
 
     return wrapper

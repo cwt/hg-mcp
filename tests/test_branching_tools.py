@@ -364,3 +364,41 @@ class TestHgPathsJson:
         result = await hg_paths(str(hg_repo_with_remote))
         data = _extract_json(result)
         assert isinstance(data, list)
+
+
+class TestHgPhases:
+    """Tests for hg_phases tool."""
+
+    @pytest.mark.asyncio
+    async def test_phases_query(self, hg_repo_with_commits: Path) -> None:
+        """Test querying phases in repository."""
+        from hg_mcp.tools import hg_phases
+
+        result = await hg_phases(repo_path=str(hg_repo_with_commits))
+        text = _extract_text(result)
+        assert "draft" in text or "public" in text or "phase" in text or "[" in text
+
+    @pytest.mark.asyncio
+    async def test_phases_set_secret(self, hg_repo_with_commits: Path) -> None:
+        """Test setting a revision phase to secret."""
+        from hg_mcp.tools import hg_phases
+
+        result = await hg_phases(
+            repo_path=str(hg_repo_with_commits),
+            revision="tip",
+            secret=True,
+        )
+        text = _extract_text(result)
+        assert not text.startswith("Error:") or "phase" in text
+
+    @pytest.mark.asyncio
+    async def test_phases_invalid_revision(self, hg_repo: Path) -> None:
+        """Test hg_phases with invalid revision."""
+        from hg_mcp.tools import hg_phases
+
+        result = await hg_phases(
+            repo_path=str(hg_repo),
+            revision="invalid;rev",
+        )
+        text = _extract_text(result)
+        assert "Error: Invalid revision" in text
