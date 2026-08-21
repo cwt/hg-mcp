@@ -2,6 +2,7 @@
 
 [![PyPI Version](https://img.shields.io/pypi/v/hg-mcp.svg)](https://pypi.org/project/hg-mcp/)
 [![MCP Badge](https://lobehub.com/badge/mcp/cwt-hg-mcp)](https://lobehub.com/mcp/cwt-hg-mcp)
+[![M8ven Live Monitored](https://m8ven.ai/badge/mcp/cwt-hg-mcp-1dgl4s)](https://m8ven.ai/mcp/cwt-hg-mcp-1dgl4s)
 
 A Model Context Protocol (MCP) server for Mercurial repository interaction, written in Python 3.10+ with AsyncIO.
 
