@@ -1,6 +1,19 @@
 # TODO - v0.10.x Development
 
-## v0.10.4 Status (Current)
+## v0.10.5 Status (Current)
+
+**Version:** v0.10.5 — 62 tools covering Mercurial 7.1.x operations | Coverage: 91%
+
+### v0.10.5 Changelog
+
+- Add `ToolAnnotations` with explicit `readOnlyHint`, `destructiveHint`, `idempotentHint`, and `openWorldHint` boolean hints to all 62 MCP tools
+- Label destructive tools (`hg_histedit`, `hg_remove`, `hg_revert`, `hg_amend`, `hg_rename`, `hg_unshelve`, `hg_tag`, `hg_rebase`, `hg_strip`, `hg_absorb`, `hg_fold`, `hg_split`, `hg_uncommit`, `hg_metaedit`, `hg_prune`) with `destructiveHint=True`
+- Wrap all 62 tool handler bodies in `try...except Exception as e:` returning structured error responses
+- Add `tests/test_tool_annotations.py` to validate tool hints, destructive flags, and safe error handling
+- Add dedicated unit tests for `hg_phases` and `hg_bisect`
+- Increase overall test suite coverage to 91% (369 passing tests)
+
+## v0.10.4 Status (Previous)
 
 **Version:** v0.10.4 — 62 tools covering Mercurial 7.1.x operations | Coverage: 87%
 
