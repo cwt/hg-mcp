@@ -169,7 +169,7 @@ class TestHelpersExtended:
                     assert "hg gexport skipped" in result
 
     def test_json_supported_commands_membership(self) -> None:
-        """Test JSON_SUPPORTED_COMMANDS includes identify and phase, excludes mutations."""
+        """Test JSON_SUPPORTED_COMMANDS includes identify and phase."""
         assert "identify" in JSON_SUPPORTED_COMMANDS
         assert "id" in JSON_SUPPORTED_COMMANDS
         assert "phase" in JSON_SUPPORTED_COMMANDS
@@ -183,7 +183,7 @@ class TestHelpersExtended:
         assert "topic" in _get_extension_hint("hg: unknown command 'topic'", ["topic"])
 
     def test_parse_list_param_edge_cases(self) -> None:
-        """Test parse_list_param with empty string, stringified lists, and non-string items."""
+        """Test parse_list_param with empty string, stringified lists, etc."""
         assert parse_list_param("") == []
         assert parse_list_param("   ") == []
         assert parse_list_param(["a", "b"]) == ["a", "b"]
@@ -192,7 +192,7 @@ class TestHelpersExtended:
         assert parse_list_param(None, default=["def"]) == ["def"]
 
     def test_sanitize_input_allow_shell_chars(self) -> None:
-        """Test sanitize_input with allow_shell_chars=True allows commit message symbols."""
+        """Test sanitize_input with allow_shell_chars=True allows symbols."""
         msg = "feat: add <item> & update | v1.0"
         # Should raise with allow_shell_chars=False
         with pytest.raises(ValueError):

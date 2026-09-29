@@ -63,13 +63,30 @@ A Model Context Protocol (MCP) server for Mercurial repository interaction, writ
 - **Git Integration (hg-git)**: Automatic detection of Git-backed repos and branch mapping (`hg_git`)
 - **HTTP Transports**: Streamable HTTP and SSE support for web-based clients (e.g., llama.cpp WebUI)
 - **Security**: Jail path restriction (required for HTTP) and secure API key authentication
+- **Tool Annotations & Safety**: Full MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) and safe structured error handling
 - **JSON Output**: Automatic JSON formatting for 20+ commands for easy machine parsing
 - **Large File Support**: Management of binaries outside normal history (`hg_largefiles`)
 - **Diagnostics & Help**: List extensions (`hg_extensions`), config (`hg_config`), and access built-in help (`hg_help`)
-- **Reliability**: 349 tests with 87% coverage, using tmpfs on Linux for extremely fast verification
+- **Reliability**: 373 tests with 91% coverage, using tmpfs on Linux for extremely fast verification
 - **62 MCP Tools**: Comprehensive coverage of Mercurial 7.1.x standard commands and built-in extensions
 
 ## Installation
+
+### Using Poetry (Recommended)
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd hg-mcp
+
+# Install dependencies
+poetry install
+
+# Optional: Install with performance enhancements (uvloop / winloop)
+poetry install --all-extras
+```
+
+### Using pip and Virtual Environment
 
 ```bash
 # Clone the repository
@@ -84,8 +101,7 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -e .
 
 # Optional: Install with performance enhancements
-pip install uvloop  # On Unix/macOS
-pip install winloop  # On Windows
+pip install -e ".[speed]"
 ```
 
 ## Usage
@@ -197,7 +213,7 @@ To use this MCP server with your AI coding assistant, point to the correct execu
 
 ```bash
 # Install development dependencies
-pip install -e ".[dev]"
+poetry install
 
 # Run all tests with coverage
 ./scripts/runtest.sh
@@ -206,13 +222,13 @@ pip install -e ".[dev]"
 ### Code Quality
 
 ```bash
-# Run linting
+# Run linting and auto-fix issues
 ./scripts/lint-check-and-fix.sh
 
-# Run type checking
+# Run static type checking (strict mode)
 ./scripts/type-check.sh
 
-# Run formatter
+# Run formatter and remove trailing whitespace (cross-platform Linux & macOS)
 ./scripts/code-format.sh
 ```
 

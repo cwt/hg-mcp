@@ -1,6 +1,18 @@
-# TODO - v0.10.x Development
+# TODO - v1.0.x Development
 
-## v0.10.5 Status (Current)
+## v1.0.0 Status (Current)
+
+**Version:** v1.0.0 — 62 tools covering Mercurial 7.1.x operations | Coverage: 91%
+
+### v1.0.0 Changelog
+
+- Stable release: Promoted development status to `5 - Production/Stable`
+- Full package dependency upgrades to latest available releases (`mcp` 2.2.0, `pydantic` 2.13.5, `ruff` 0.16.9, `mypy` 2.3.1, `pytest` 9.1.1, `black` 26.5.1)
+- Resolved all static typing errors and achieved 100% clean check under `mypy` strict mode
+- Made `scripts/code-format.sh` cross-platform across both Linux (GNU `sed`) and macOS/BSD (`sed -i ''`)
+- Test suite passing at 100% (373 tests) with 91% code coverage
+
+## v0.10.5 Status (Previous)
 
 **Version:** v0.10.5 — 62 tools covering Mercurial 7.1.x operations | Coverage: 91%
 

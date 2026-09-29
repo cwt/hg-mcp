@@ -380,7 +380,9 @@ class TestHgTransplant:
         interactive mode, which is not supported in MCP.
         """
         with pytest.raises(TypeError, match="revisions"):
-            await hg_transplant(repo_path=str(hg_repo_with_extensions))
+            await hg_transplant(  # type: ignore[call-arg]
+                repo_path=str(hg_repo_with_extensions)
+            )
 
     @pytest.mark.asyncio
     async def test_transplant_with_source_no_revisions(
@@ -388,7 +390,7 @@ class TestHgTransplant:
     ) -> None:
         """Test transplant with source but without revisions raises TypeError."""
         with pytest.raises(TypeError, match="revisions"):
-            await hg_transplant(
+            await hg_transplant(  # type: ignore[call-arg]
                 repo_path=str(hg_repo_with_extensions),
                 source="default",
             )

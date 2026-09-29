@@ -5,11 +5,11 @@ Creates and configures the FastMCP server for hg-mcp operations.
 
 from pathlib import Path
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 
-class HG_MCP(FastMCP):  # noqa: N801
-    """Custom FastMCP subclass with jail path and hg executable path support."""
+class HG_MCP(MCPServer):  # noqa: N801
+    """Custom MCP server subclass with jail path and hg executable path support."""
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)  # type: ignore[arg-type]

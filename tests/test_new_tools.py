@@ -9,6 +9,7 @@ Tests for tools re-implemented from v0.7.3:
 Also tests helpers.py functions for better coverage.
 """
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -33,13 +34,11 @@ from hg_mcp.tools import (
 )
 
 
-def _extract_text(result: str | list[object]) -> str:
+def _extract_text(result: str | Sequence[object]) -> str:
     """Extract text from test result."""
-    if isinstance(result, list):
-        return "\n".join(
-            item.text if hasattr(item, "text") else str(item) for item in result
-        )
-    return result
+    if isinstance(result, str):
+        return result
+    return "\n".join(getattr(item, "text", str(item)) for item in result)
 
 
 class TestSanitizeInput:

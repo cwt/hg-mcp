@@ -196,7 +196,8 @@ def sanitize_input(
         # For commit messages/descriptions: reject command substitution/expansion tokens
         dangerous_patterns = ["`", "$(", "${"]
     else:
-        # For identifiers (branch, bookmark, tag, revision, file): reject shell metacharacters
+        # For identifiers (branch, bookmark, tag, revision, file):
+        # reject shell metacharacters
         dangerous_patterns = ["`", "$(", "${", "|", ";", "&&", "||", ">", "<", "&"]
 
     for pattern in dangerous_patterns:
@@ -540,7 +541,10 @@ async def _get_git_branches(
 
 
 async def sync_git_bookmarks(path: Path) -> str:
-    """Sync Mercurial bookmarks to Git branches if hg-git is enabled and repo is Git-backed."""
+    """Sync Mercurial bookmarks to Git branches.
+
+    Only applies if hg-git is enabled and repo is Git-backed.
+    """
     try:
         if await _is_hggit_enabled(path):
             is_git_backed, _ = await _check_git_remotes(path)

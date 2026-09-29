@@ -169,9 +169,9 @@ async def hg_transplant(
 
 When adding a new MCP tool:
 
-1. **Use the `@mcp.tool()` decorator**
+1. **Use the `@mcp.tool()` decorator** with explicit `ToolAnnotations` hints (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`)
 2. **Apply `@handle_repo_errors` decorator** for repository operations
-3. **Apply `@json_tool` decorator** if the tool returns JSON output (see decorator pattern in TODO.md)
+3. **Apply `@json_tool` decorator** if the tool returns JSON output
 4. **Follow parameter ordering**: required params first, `repo_path` next, optional params last
 5. **Validate inputs** using `sanitize_input()` for user-provided strings (bookmark names, revisions, commit messages, file paths)
 6. **Validate `repo_path`** using `validate_repo_path(repo_path)`
@@ -235,8 +235,8 @@ pytest -n auto
 | ------ | ----------- |
 | `runtest.sh` | Full test suite with coverage (use before committing) |
 | `lint-check-and-fix.sh` | Runs `ruff check --fix` to lint and auto-fix issues |
-| `type-check.sh` | Runs `mypy` for static type checking |
-| `code-format.sh` | Runs `black` formatter and removes trailing whitespace |
+| `type-check.sh` | Runs `mypy` for static type checking (strict mode) |
+| `code-format.sh` | Cross-platform (Linux & macOS) script that runs `black` and cleans trailing whitespace |
 
 ## Testing New Tools
 
@@ -260,7 +260,7 @@ After adding new tools, always verify they are registered:
 python -c "from hg_mcp.main import mcp; print(f'Tools registered: {len(mcp._tool_manager._tools)}')"
 ```
 
-Expected: 45+ tools (as of v0.8.2).
+Expected: 62 tools (as of v1.0.0).
 
 ### Test Performance Optimization
 

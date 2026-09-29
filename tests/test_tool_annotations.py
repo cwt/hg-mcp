@@ -1,7 +1,8 @@
 """Tests for tool annotations and error handling across all tools.
 
 Ensures that:
-1. Every tool has all 4 hints declared: readOnlyHint, destructiveHint, idempotentHint, openWorldHint
+1. Every tool has all 4 hints declared: readOnlyHint, destructiveHint,
+   idempotentHint, openWorldHint
 2. All 4 hints are strict booleans (True or False)
 3. Destructive tools are appropriately labelled with destructiveHint=True
 4. All tool handlers handle invalid repo_path gracefully and return error responses
@@ -39,6 +40,19 @@ EXPECTED_OPEN_WORLD_TOOLS = {
 }
 
 
+def _get_hint(ann: object, name: str) -> object:
+    snake_map = {
+        "readOnlyHint": "read_only_hint",
+        "destructiveHint": "destructive_hint",
+        "idempotentHint": "idempotent_hint",
+        "openWorldHint": "open_world_hint",
+    }
+    snake = snake_map.get(name, name)
+    if hasattr(ann, snake):
+        return getattr(ann, snake)
+    return getattr(ann, name, None)
+
+
 def test_all_tools_have_all_four_hints_declared() -> None:
     """Verify all registered tools declare all 4 hints as booleans."""
     tools = mcp._tool_manager._tools
@@ -54,7 +68,7 @@ def test_all_tools_have_all_four_hints_declared() -> None:
             "idempotentHint",
             "openWorldHint",
         ]:
-            val = getattr(ann, hint_name)
+            val = _get_hint(ann, hint_name)
             assert val is not None, f"Tool {name} is missing hint: {hint_name}"
             assert isinstance(
                 val, bool
@@ -62,21 +76,21 @@ def test_all_tools_have_all_four_hints_declared() -> None:
 
 
 def test_destructive_hints_labelled() -> None:
-    """Verify that destructive tools are correctly annotated with destructiveHint=True."""
+    """Verify destructive tools are annotated with destructiveHint=True."""
     tools = mcp._tool_manager._tools
     for name, tool in tools.items():
         ann = tool.annotations
         assert ann is not None
+        destructive = _get_hint(ann, "destructiveHint")
+        readonly = _get_hint(ann, "readOnlyHint")
         if name in EXPECTED_DESTRUCTIVE_TOOLS:
+            assert destructive is True, f"Expected destructiveHint=True for {name}"
             assert (
-                ann.destructiveHint is True
-            ), f"Expected destructiveHint=True for {name}"
-            assert (
-                ann.readOnlyHint is False
+                readonly is False
             ), f"Expected readOnlyHint=False for destructive tool {name}"
         else:
             assert (
-                ann.destructiveHint is False
+                destructive is False
             ), f"Expected destructiveHint=False for non-destructive tool {name}"
 
 
@@ -86,19 +100,20 @@ def test_open_world_hints_labelled() -> None:
     for name, tool in tools.items():
         ann = tool.annotations
         assert ann is not None
+        open_world = _get_hint(ann, "openWorldHint")
         if name in EXPECTED_OPEN_WORLD_TOOLS:
             assert (
-                ann.openWorldHint is True
+                open_world is True
             ), f"Expected openWorldHint=True for remote tool {name}"
         else:
             assert (
-                ann.openWorldHint is False
+                open_world is False
             ), f"Expected openWorldHint=False for local tool {name}"
 
 
 @pytest.mark.asyncio
 async def test_all_tools_catch_errors_on_invalid_repo() -> None:
-    """Verify that invoking tools with an invalid repo returns a clean response without crashing."""
+    """Verify invoking tools with invalid repo returns clean error response."""
     import inspect
 
     tools = mcp._tool_manager._tools
@@ -140,13 +155,19 @@ async def test_all_tools_catch_errors_on_invalid_repo() -> None:
                     or "error" in combined
                     or "not a mercurial repository" in combined.lower()
                     or "does not exist" in combined.lower()
-                ), f"Tool {name} did not return structured error for invalid repo: {result}"
+                ), (
+                    f"Tool {name} did not return structured error for invalid "
+                    f"repo: {result}"
+                )
             elif isinstance(result, str):
                 assert (
                     "Error" in result
                     or "error" in result
                     or "not a mercurial repository" in result.lower()
                     or "does not exist" in result.lower()
-                ), f"Tool {name} did not return structured error for invalid repo: {result}"
+                ), (
+                    f"Tool {name} did not return structured error for invalid "
+                    f"repo: {result}"
+                )
         except Exception as e:
             pytest.fail(f"Tool {name} raised uncaught exception on invalid repo: {e}")

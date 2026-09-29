@@ -6,13 +6,16 @@ tool output handling and error management.
 
 import functools
 from collections.abc import Awaitable, Callable
+from typing import Any, ParamSpec, cast, overload
 
 from mcp.types import Annotations, TextContent
 
+P = ParamSpec("P")
+
 
 def json_tool(
-    func: Callable[..., Awaitable[list[TextContent] | str]],
-) -> Callable[..., Awaitable[list[TextContent]]]:
+    func: Callable[P, Awaitable[list[TextContent] | str]],
+) -> Callable[P, Awaitable[list[TextContent]]]:
     """Decorator for tools that return JSON output.
 
     Wraps the returned JSON string in TextContent with audience: ["assistant"]
@@ -23,9 +26,7 @@ def json_tool(
     """
 
     @functools.wraps(func)
-    async def wrapper(  # type: ignore[no-untyped-def]
-        *args, **kwargs
-    ) -> list[TextContent]:
+    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> list[TextContent]:
         result = await func(*args, **kwargs)
 
         # If result is an error (str type), return as plain text in TextContent
@@ -56,9 +57,27 @@ def json_tool(
     return wrapper
 
 
+@overload
 def handle_repo_errors(
-    func: Callable[..., Awaitable[str | list[TextContent]]],
-) -> Callable[..., Awaitable[str | list[TextContent]]]:
+    func: Callable[P, Awaitable[list[TextContent]]],
+) -> Callable[P, Awaitable[list[TextContent]]]: ...
+
+
+@overload
+def handle_repo_errors(
+    func: Callable[P, Awaitable[str]],
+) -> Callable[P, Awaitable[str]]: ...
+
+
+@overload
+def handle_repo_errors(
+    func: Callable[P, Awaitable[str | list[TextContent]]],
+) -> Callable[P, Awaitable[str | list[TextContent]]]: ...
+
+
+def handle_repo_errors(
+    func: Callable[P, Awaitable[Any]],
+) -> Callable[P, Awaitable[Any]]:
     """Decorator to handle common repository validation errors.
 
     For functions decorated with @json_tool, returns errors as list[TextContent]
@@ -68,14 +87,12 @@ def handle_repo_errors(
     from mcp.types import Annotations as AnnotationsType
 
     @functools.wraps(func)
-    async def wrapper(  # type: ignore[no-untyped-def]
-        *args, **kwargs
-    ) -> str | list[TextContent]:
+    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> str | list[TextContent]:
         # We assume the first argument or 'repo_path' kwarg is the path
         # But since we invoke validate_repo_path inside the tools,
         # we essentially use this to catch the ValueErrors raised there.
         try:
-            return await func(*args, **kwargs)
+            return cast(str | list[TextContent], await func(*args, **kwargs))
         except ValueError as e:
             msg = str(e)
             if "Not a Mercurial repository" in msg:

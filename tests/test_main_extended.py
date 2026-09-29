@@ -178,6 +178,182 @@ class TestMainExtended:
         mcp.hg_path = None
         assert mcp.hg_path is None
 
+    @patch("argparse.ArgumentParser.parse_args")
+    @patch("hg_mcp.server.mcp.sse_app")
+    @patch("hg_mcp.server.mcp.streamable_http_app")
+    @patch("uvicorn.run")
+    def test_main_route_dedup_prevents_duplicates(
+        self,
+        mock_uvicorn: MagicMock,
+        mock_http_app: MagicMock,
+        mock_sse_app: MagicMock,
+        mock_parse_args: MagicMock,
+    ) -> None:
+        """Verify identical routes (path and method) are deduplicated."""
+        from starlette.responses import PlainTextResponse
+        from starlette.routing import Route
+
+        async def handler(request: object) -> PlainTextResponse:
+            return PlainTextResponse("ok")
+
+        shared = Route("/common", handler, methods=["GET"])
+        mock_parse_args.return_value = MagicMock(
+            transport=["sse", "streamable-http"],
+            jail="/tmp/jail",
+            port=8000,
+            host="127.0.0.1",
+            api_key=None,
+            mercurial=None,
+        )
+        sse_app = MagicMock()
+        sse_app.routes = [shared]
+        http_app = MagicMock()
+        http_app.routes = [shared]
+        mock_sse_app.return_value = sse_app
+        mock_http_app.return_value = http_app
+
+        main()
+        app = mock_uvicorn.call_args[0][0]
+        matching = [
+            r
+            for r in app.routes
+            if isinstance(r, Route)
+            and r.path == "/common"
+            and "GET" in (r.methods or set())
+        ]
+        assert len(matching) == 1
+
+    @patch("argparse.ArgumentParser.parse_args")
+    @patch("hg_mcp.server.mcp.sse_app")
+    @patch("hg_mcp.server.mcp.streamable_http_app")
+    @patch("uvicorn.run")
+    def test_main_route_dedup_allows_different_methods(
+        self,
+        mock_uvicorn: MagicMock,
+        mock_http_app: MagicMock,
+        mock_sse_app: MagicMock,
+        mock_parse_args: MagicMock,
+    ) -> None:
+        """Verify routes with same path but different methods are both kept."""
+        from starlette.responses import PlainTextResponse
+        from starlette.routing import Route
+
+        async def handler(request: object) -> PlainTextResponse:
+            return PlainTextResponse("ok")
+
+        get_route = Route("/common", handler, methods=["GET"])
+        post_route = Route("/common", handler, methods=["POST"])
+        mock_parse_args.return_value = MagicMock(
+            transport=["sse", "streamable-http"],
+            jail="/tmp/jail",
+            port=8000,
+            host="127.0.0.1",
+            api_key=None,
+            mercurial=None,
+        )
+        sse_app = MagicMock()
+        sse_app.routes = [get_route]
+        http_app = MagicMock()
+        http_app.routes = [post_route]
+        mock_sse_app.return_value = sse_app
+        mock_http_app.return_value = http_app
+
+        main()
+        app = mock_uvicorn.call_args[0][0]
+        matching = [
+            r for r in app.routes if isinstance(r, Route) and r.path == "/common"
+        ]
+        assert len(matching) == 2
+        assert any("GET" in (r.methods or set()) for r in matching)
+        assert any("POST" in (r.methods or set()) for r in matching)
+
+    @patch("argparse.ArgumentParser.parse_args")
+    @patch("hg_mcp.server.mcp.sse_app")
+    @patch("hg_mcp.server.mcp.streamable_http_app")
+    @patch("uvicorn.run")
+    def test_main_lifespan_selection(
+        self,
+        mock_uvicorn: MagicMock,
+        mock_http_app: MagicMock,
+        mock_sse_app: MagicMock,
+        mock_parse_args: MagicMock,
+    ) -> None:
+        """Test lifespan selection for sse, streamable-http, and combined."""
+        sse_app = MagicMock()
+        sse_lifespan = MagicMock(name="sse_lifespan")
+        sse_app.router.lifespan_context = sse_lifespan
+        sse_app.routes = []
+        mock_sse_app.return_value = sse_app
+
+        http_app = MagicMock()
+        http_lifespan = MagicMock(name="http_lifespan")
+        http_app.router.lifespan_context = http_lifespan
+        http_app.routes = []
+        mock_http_app.return_value = http_app
+
+        for transports, expected in [
+            (["sse"], sse_lifespan),
+            (["streamable-http"], http_lifespan),
+            (["sse", "streamable-http"], "combined"),
+        ]:
+            mock_parse_args.return_value = MagicMock(
+                transport=transports,
+                jail="/tmp/jail",
+                port=8000,
+                host="127.0.0.1",
+                api_key=None,
+                mercurial=None,
+            )
+            main()
+            app = mock_uvicorn.call_args[0][0]
+            if expected == "combined":
+                assert app.router.lifespan_context is not sse_lifespan
+                assert app.router.lifespan_context is not http_lifespan
+            else:
+                assert app.router.lifespan_context is expected
+
+    @patch("argparse.ArgumentParser.parse_args")
+    @patch("hg_mcp.server.mcp.sse_app")
+    @patch("hg_mcp.server.mcp.streamable_http_app")
+    @patch("uvicorn.run")
+    def test_main_sse_only_excludes_http_routes(
+        self,
+        mock_uvicorn: MagicMock,
+        mock_http_app: MagicMock,
+        mock_sse_app: MagicMock,
+        mock_parse_args: MagicMock,
+    ) -> None:
+        """Verify --transport sse includes only SSE routes."""
+        from starlette.responses import PlainTextResponse
+        from starlette.routing import Route
+
+        async def handler(request: object) -> PlainTextResponse:
+            return PlainTextResponse("ok")
+
+        sse_route = Route("/sse", handler, methods=["GET"])
+        http_route = Route("/mcp", handler, methods=["POST"])
+
+        mock_parse_args.return_value = MagicMock(
+            transport=["sse"],
+            jail="/tmp/jail",
+            port=8000,
+            host="127.0.0.1",
+            api_key=None,
+            mercurial=None,
+        )
+        sse_app = MagicMock()
+        sse_app.routes = [sse_route]
+        http_app = MagicMock()
+        http_app.routes = [http_route]
+        mock_sse_app.return_value = sse_app
+        mock_http_app.return_value = http_app
+
+        main()
+        app = mock_uvicorn.call_args[0][0]
+        paths = [r.path for r in app.routes if isinstance(r, Route)]
+        assert "/sse" in paths
+        assert "/mcp" not in paths
+
 
 class TestServerMain:
     """Tests for server.py main function."""
