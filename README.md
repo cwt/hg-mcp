@@ -1,8 +1,12 @@
 # HG MCP Server
 
+[![License](https://img.shields.io/pypi/l/hg-mcp)](LICENSE)
+[![Python Compatibility](https://img.shields.io/pypi/pyversions/hg-mcp)](#installation)
 [![PyPI Version](https://img.shields.io/pypi/v/hg-mcp.svg)](https://pypi.org/project/hg-mcp/)
-[![MCP Badge](https://lobehub.com/badge/mcp/cwt-hg-mcp)](https://lobehub.com/mcp/cwt-hg-mcp)
+[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue)](https://deepwiki.com/cwt/hg-mcp)<!-- [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/cwt/hg-mcp) -->
+[![View Code Wiki](https://assets.codewiki.google/readme-badge/static.svg)](https://codewiki.google/github.com/cwt/hg-mcp?utm_source=badge&utm_medium=github&utm_campaign=github.com/cwt/hg-mcp)  
 [![M8ven Live Monitored](https://m8ven.ai/badge/mcp/cwt-hg-mcp-1dgl4s)](https://m8ven.ai/mcp/cwt-hg-mcp-1dgl4s)
+[![MCP Badge](https://lobehub.com/badge/mcp/cwt-hg-mcp)](https://lobehub.com/mcp/cwt-hg-mcp)
 
 A Model Context Protocol (MCP) server for Mercurial repository interaction, written in Python 3.10+ with AsyncIO.
 
