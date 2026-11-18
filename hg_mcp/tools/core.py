@@ -130,8 +130,18 @@ async def hg_status(repo_path: str = ".") -> list[TextContent]:
 async def hg_log(repo_path: str = ".", limit: int = 10) -> list[TextContent]:
     """Show commit history.
 
-    Equivalent to 'git log'. Displays revisions with changeset ID, author,
-    date, and message.
+    Equivalent to 'git log'. Returns a JSON array of the latest commits with
+    `rev`, `node` (40-char Mercurial changeset ID), `user`, `date`, `desc`,
+    `branch`, `bookmarks`, `tags`, `parents`, and `phase`.
+
+    In Git-backed repos, entries automatically include a companion `gitnode`
+    field (40-char Git commit SHA-1, or `null` if not exported to Git yet)
+    without needing any template or revset arguments. Truncate `node` /
+    `gitnode` to 12 characters if short hashes are needed.
+
+    Args:
+        repo_path: The repository path (default: ".")
+        limit: Maximum number of commits to return (default: 10, max: 1000)
     """
     from mcp.types import Annotations as AnnotationsType
 

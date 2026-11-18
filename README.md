@@ -64,7 +64,7 @@ A Model Context Protocol (MCP) server for Mercurial repository interaction, writ
 ### Technical Features
 
 - **Async I/O**: Asynchronous command execution for high-performance operations
-- **Git Integration (hg-git)**: Automatic detection of Git-backed repos and branch mapping (`hg_git`)
+- **Git Integration (hg-git)**: Automatic detection of Git-backed repos, branch mapping (`hg_git`), and companion `gitnode` Git commit hashes alongside `node` in JSON tool outputs
 - **HTTP Transports**: Streamable HTTP and SSE support for web-based clients (e.g., llama.cpp WebUI)
 - **Security**: Jail path restriction (required for HTTP) and secure API key authentication
 - **Tool Annotations & Safety**: Full MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) and safe structured error handling

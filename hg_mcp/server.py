@@ -71,11 +71,40 @@ mcp: HG_MCP = HG_MCP(
   `hg gexport` after operations in Git-backed repos to sync bookmarks to Git
   branches.
 
+**hg-git Commit Hashes (`node` vs `gitnode`)**
+- In Git-backed repos, JSON tools that return a 40-char Mercurial changeset
+  hash (`node`) **automatically** return a companion `gitnode` field
+  (`hg_log`, `hg_identify`, `hg_heads`, `hg_bookmarks`, `hg_tags`,
+  `hg_incoming`, `hg_outgoing`, `hg_stack`). Plain Mercurial repos omit
+  `gitnode`.
+- **No templates or revsets are needed to read `gitnode`:** `hg_log` only
+  accepts `repo_path` and `limit` (default `10`), and already includes full
+  40-char `node` and `gitnode` in its JSON array output (truncate to 12 chars
+  when displaying short hashes). Do not pass `template`, `fields`, or
+  `revision` to `hg_log`.
+- `gitnode` is the 40-char Git commit SHA-1 when mapped in `.hg/git-mapfile`,
+  or `null` if the changeset has not been exported/mapped to Git yet (e.g.,
+  before `hg gexport`), in an empty repo, or during an uncommitted merge.
+- **How to use each hash:**
+  - Pass Mercurial `node` (or `rev`/bookmark) to tools that take a
+    `revision`/`revisions` argument (such as `hg_identify`, `hg_diff`,
+    `hg_cat`, `hg_update`, `hg_backout`, `hg_rebase`). Never pass a raw Git
+    hash directly as a Mercurial revision; to target a Git commit in a
+    `revision` parameter, use the hg-git revset `gitnode(<git_sha>)` (the
+    hash argument is required).
+  - Use `gitnode` when cross-referencing commits with Git remotes, GitHub/
+    GitLab PRs, CI/CD, or reporting Git commit hashes to the user.
+  - In `hg_identify` without `revision`, `node` is `ffffffff...` (working
+    directory) and `gitnode` resolves from the single parent commit (or `null`
+    for an uncommitted merge or empty repo).
+  - In `hg_incoming` from a Git remote, unpulled commits do not have a local
+    Mercurial `node` yet, so `node` temporarily equals `gitnode`.
+
 **Safety**
 - Confirm before: strip, rebase -D, force evolve, public changeset rewrites
 - After merge/rebase: always run `hg resolve --list`, report conflicts
 - Before push: show `hg outgoing -G`, confirm if >5 changesets
-- Default `hg log` to `-l 10` unless user specifies more
+- Default `hg_log` to `limit=10` unless user specifies more
 
 **Tools & Output**
 - Use provided hg_* tools; don't suggest raw shell commands

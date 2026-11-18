@@ -274,7 +274,9 @@ async def hg_heads(
     """Show branch heads.
 
     Returns the head changesets of branches. A head is a changeset with no
-    children on the same branch.
+    children on the same branch. In Git-backed repos, entries include a
+    companion `gitnode` field (40-char Git commit SHA-1, or `null` if
+    unexported).
 
     Args:
         repo_path: The repository path
@@ -310,7 +312,9 @@ async def hg_incoming(
     """Show new changesets found in source.
 
     Displays changesets that exist in the source repository but not in the
-    local repository. Useful for previewing what would be pulled.
+    local repository. Useful for previewing what would be pulled. In Git-backed
+    repos, entries include a companion `gitnode` field (for Git remotes, `node`
+    equals `gitnode` until pulled; otherwise `null` if unmapped).
 
     Args:
         repo_path: The repository path
@@ -343,7 +347,9 @@ async def hg_outgoing(
     """Show changesets not found in the destination.
 
     Displays changesets that exist locally but not in the destination
-    repository. Useful for previewing what would be pushed.
+    repository. Useful for previewing what would be pushed. In Git-backed
+    repos, entries include a companion `gitnode` field (40-char Git commit
+    SHA-1, or `null` if unexported).
 
     Args:
         repo_path: The repository path
@@ -446,7 +452,10 @@ async def hg_identify(
     """Identify the working directory or specified revision.
 
     Returns the changeset ID (hash) and branch information for the
-    working directory or a specific revision.
+    working directory or a specific revision. In Git-backed repos, entries
+    include a companion `gitnode` field (40-char Git commit SHA-1 resolved
+    from the revision or single working-directory parent, or `null` if
+    unexported, empty, or an uncommitted merge).
 
     Args:
         repo_path: The repository path

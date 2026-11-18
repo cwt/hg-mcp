@@ -29,7 +29,9 @@ async def hg_bookmarks(repo_path: str = ".") -> list[TextContent]:
     """List all bookmarks.
 
     Bookmarks are lightweight pointers to revisions (like Git branches).
-    Unlike Mercurial branches, bookmarks can be moved and deleted.
+    Unlike Mercurial branches, bookmarks can be moved and deleted. In
+    Git-backed repos, entries include a companion `gitnode` field (40-char
+    Git commit SHA-1, or `null` if unexported).
     """
     try:
         path = validate_repo_path(repo_path)
@@ -144,7 +146,9 @@ async def hg_tags(repo_path: str = ".") -> list[TextContent]:
     """List all tags.
 
     Shows all tags in the repository with their associated revision numbers
-    and changeset IDs.
+    and changeset IDs (`node`). In Git-backed repos, entries also include a
+    companion `gitnode` field (40-char Git commit SHA-1, or `null` if
+    unexported).
     """
     try:
         path = validate_repo_path(repo_path)

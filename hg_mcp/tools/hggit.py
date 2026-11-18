@@ -28,7 +28,12 @@ from hg_mcp.server import mcp
 )
 @handle_repo_errors
 async def hg_git(repo_path: str = ".") -> str:
-    """Check hg-git extension status and whether this repo is Git-backed."""
+    """Check hg-git extension status and whether this repo is Git-backed.
+
+    In Git-backed repositories, JSON tools returning a 40-char Mercurial
+    `node` hash also return a companion `gitnode` field (40-char Git commit
+    SHA-1, or `null` if not yet exported to Git).
+    """
     try:
         path = validate_repo_path(repo_path)
 
@@ -624,7 +629,9 @@ async def hg_stack(repo_path: str = ".") -> list[TextContent]:
     """Show the current topic stack.
 
     Requires the 'evolve' (topic) extension. Displays all changesets
-    in the current active topic with their status and relations.
+    in the current active topic with their status and relations. In
+    Git-backed repos, entries include a companion `gitnode` field (40-char
+    Git commit SHA-1, or `null` if unexported).
 
     Use `hg_next`/`hg_previous` to navigate the stack, and
     `hg_absorb` or `hg_fold` to reorganize it.

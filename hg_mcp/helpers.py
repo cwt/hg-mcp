@@ -5,6 +5,7 @@ and parameter parsing.
 """
 
 import asyncio
+import configparser
 import json
 import secrets
 import subprocess
@@ -143,6 +144,7 @@ JSON_SUPPORTED_COMMANDS: frozenset[str] = frozenset(
         "paths",
         "phase",
         "resolve",
+        "stack",
         "status",
         "tags",
         "topics",
@@ -162,6 +164,282 @@ GIT_REMOTE_PATTERNS: list[str] = [
 ]
 
 MAX_LOG_LIMIT = 1000
+
+_HEX_CHARS: frozenset[str] = frozenset("0123456789abcdefABCDEF")
+_NULL_NODE: str = "0" * 40
+_WDIR_NODE: str = "f" * 40
+
+
+def _is_hex_node(value: object) -> bool:
+    """Return True if value is a 40-character hexadecimal node hash."""
+    return (
+        isinstance(value, str)
+        and len(value) == 40
+        and all(ch in _HEX_CHARS for ch in value)
+    )
+
+
+def _is_git_dir(candidate: Path) -> bool:
+    """Return True if candidate is a local Git working tree or bare Git repo."""
+    try:
+        if not candidate.is_dir():
+            return False
+        if (candidate / ".hg").exists():
+            return False
+        if (candidate / ".git").exists():
+            return True
+        return (
+            (candidate / "HEAD").is_file()
+            and (candidate / "objects").is_dir()
+            and (candidate / "refs").is_dir()
+        )
+    except OSError:
+        return False
+
+
+def _is_git_remote_value(value: str) -> bool:
+    """Return True if a configured remote path or URL points to a Git repository."""
+    cleaned = value.strip()
+    if not cleaned:
+        return False
+
+    lower = cleaned.lower()
+    if (
+        lower.startswith("git+")
+        or lower.endswith(".git")
+        or any(pattern in lower for pattern in GIT_REMOTE_PATTERNS)
+    ):
+        return True
+
+    # SCP-style SSH remote such as git@host:org/repo
+    if "://" not in lower and ":" in lower and lower.startswith("git@"):
+        return True
+
+    if lower.startswith("file://"):
+        local_target = cleaned[len("file://") :]
+    elif "://" in cleaned:
+        return False
+    else:
+        local_target = cleaned
+
+    return _is_git_dir(Path(local_target))
+
+
+def _find_hg_dir(start_path: Path) -> Path | None:
+    """Walk up from start_path to locate the repository's .hg directory."""
+    try:
+        current = start_path.absolute()
+    except OSError:
+        return None
+
+    while True:
+        hg_dir = current / ".hg"
+        if hg_dir.is_dir():
+            return hg_dir
+        if current.parent == current:
+            return None
+        current = current.parent
+
+
+def _resolve_store_hg_dir(hg_dir: Path) -> Path:
+    """Resolve the shared repository source .hg directory if hg share is used."""
+    sharedpath_file = hg_dir / "sharedpath"
+    if not sharedpath_file.is_file():
+        return hg_dir
+
+    try:
+        raw = sharedpath_file.read_text(encoding="utf-8", errors="replace").strip()
+    except OSError:
+        return hg_dir
+
+    if not raw:
+        return hg_dir
+
+    shared = Path(raw)
+    if shared.is_absolute():
+        return shared if shared.is_dir() else hg_dir
+
+    for base in (hg_dir, hg_dir.parent):
+        candidate = (base / shared).resolve()
+        if candidate.is_dir():
+            return candidate
+    return hg_dir
+
+
+def _is_git_backed_repo(cwd: Path | None) -> tuple[bool, Path | None]:
+    """Check whether cwd belongs to a Git-backed repo and return its mapfile path."""
+    if cwd is None:
+        return False, None
+
+    hg_dir = _find_hg_dir(cwd)
+    if hg_dir is None:
+        return False, None
+
+    store_hg_dir = _resolve_store_hg_dir(hg_dir)
+    search_dirs = [store_hg_dir] if store_hg_dir == hg_dir else [store_hg_dir, hg_dir]
+
+    mapfile: Path | None = None
+    for candidate_dir in search_dirs:
+        candidate_map = candidate_dir / "git-mapfile"
+        if candidate_map.is_file():
+            mapfile = candidate_map
+            break
+
+    for candidate_dir in search_dirs:
+        if (
+            (candidate_dir / "git-mapfile").is_file()
+            or (candidate_dir / "git-branch").is_file()
+            or (candidate_dir / "git-tags").is_file()
+            or (candidate_dir / "git").is_dir()
+        ):
+            return True, mapfile
+
+    for candidate_dir in search_dirs:
+        hgrc_path = candidate_dir / "hgrc"
+        if not hgrc_path.is_file():
+            continue
+        parser = configparser.RawConfigParser(allow_no_value=True)
+        try:
+            parser.read(hgrc_path, encoding="utf-8")
+            if parser.has_section("paths"):
+                for _, remote_val in parser.items("paths"):
+                    if remote_val and _is_git_remote_value(remote_val):
+                        return True, mapfile
+        except (configparser.Error, OSError, UnicodeDecodeError):
+            continue
+
+    return False, None
+
+
+def _load_git_mapfile(mapfile: Path | None) -> dict[str, str]:
+    """Load hg-node -> git-node mapping from an hg-git git-mapfile."""
+    mapping: dict[str, str] = {}
+    if mapfile is None or not mapfile.is_file():
+        return mapping
+
+    try:
+        with mapfile.open("r", encoding="utf-8", errors="replace") as handle:
+            for raw_line in handle:
+                line = raw_line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split()
+                if len(parts) != 2:
+                    continue
+                git_sha, hg_sha = parts[0], parts[1]
+                if _is_hex_node(git_sha) and _is_hex_node(hg_sha):
+                    mapping[hg_sha.lower()] = git_sha.lower()
+    except OSError:
+        return {}
+
+    return mapping
+
+
+def _resolve_gitnode_for_item(
+    item: dict[str, Any],
+    git_map: dict[str, str],
+    incoming_from_git: bool = False,
+) -> str | None:
+    """Resolve the companion 40-char gitnode hash for a JSON entry with 'node'."""
+    node = item.get("node")
+    if not isinstance(node, str):
+        return None
+
+    node_lower = node.lower()
+    if node_lower == _NULL_NODE:
+        return None
+
+    # `hg identify` without -r reports working-dir virtual node ffff...;
+    # resolve from its single parent commit when clean or dirty, else None.
+    if node_lower == _WDIR_NODE:
+        parents = item.get("parents")
+        if isinstance(parents, list) and len(parents) == 1:
+            parent = parents[0]
+            if isinstance(parent, str):
+                parent_lower = parent.lower()
+                if parent_lower != _NULL_NODE and _is_hex_node(parent_lower):
+                    return git_map.get(parent_lower)
+        return None
+
+    if not _is_hex_node(node_lower):
+        return None
+
+    # For `hg incoming` against a Git remote, hg-git's overlayrepo sets `node`
+    # directly to the incoming Git SHA before pulling creates an hg node.
+    if incoming_from_git:
+        return node_lower
+
+    return git_map.get(node_lower)
+
+
+def _enrich_data_with_gitnode(
+    data: object,
+    git_map: dict[str, str],
+    incoming_from_git: bool = False,
+) -> None:
+    """Add companion 'gitnode' field to JSON entries containing a 'node' field."""
+    if isinstance(data, list):
+        for item in data:
+            if isinstance(item, dict) and "node" in item:
+                item["gitnode"] = _resolve_gitnode_for_item(
+                    item, git_map, incoming_from_git=incoming_from_git
+                )
+    elif isinstance(data, dict) and "node" in data:
+        data["gitnode"] = _resolve_gitnode_for_item(
+            data, git_map, incoming_from_git=incoming_from_git
+        )
+
+
+def _parse_hg_json_output(
+    output: str, cmd: str
+) -> tuple[object | None, str, str | None]:
+    """Parse hg JSON output, stripping comparing/searching preambles if present."""
+    try:
+        return json.loads(output), "", None
+    except json.JSONDecodeError:
+        if cmd not in ("incoming", "outgoing"):
+            return None, "", None
+
+    comparing_target: str | None = None
+    json_start_idx: int | None = None
+    offset = 0
+    for line in output.splitlines(keepends=True):
+        stripped = line.strip()
+        if stripped.startswith("comparing with "):
+            comparing_target = stripped[len("comparing with ") :].strip()
+        if stripped.startswith("["):
+            json_start_idx = offset
+            break
+        offset += len(line)
+
+    if json_start_idx is None:
+        return None, "", None
+
+    preamble = output[:json_start_idx]
+    try:
+        return json.loads(output[json_start_idx:]), preamble, comparing_target
+    except json.JSONDecodeError:
+        return None, "", None
+
+
+def _format_json_output(output: str, cmd: str, cwd: Path | None) -> str:
+    """Parse, enrich with gitnode if Git-backed, and minify hg JSON output."""
+    data, preamble, comparing_target = _parse_hg_json_output(output, cmd)
+    if data is None:
+        return output
+
+    is_git_backed, mapfile = _is_git_backed_repo(cwd)
+    incoming_from_git = False
+    if cmd == "incoming":
+        incoming_from_git = bool(
+            comparing_target and _is_git_remote_value(comparing_target)
+        ) or (is_git_backed and "searching for changes" not in preamble.lower())
+
+    if is_git_backed or incoming_from_git:
+        git_map = _load_git_mapfile(mapfile)
+        _enrich_data_with_gitnode(data, git_map, incoming_from_git=incoming_from_git)
+
+    return json.dumps(data, separators=(",", ":"))
 
 
 def sanitize_input(
@@ -366,12 +644,23 @@ async def run_hg_command(
     is_json = False
     # Automatically add -T json for commands that support it
     if use_json and args[0] in JSON_SUPPORTED_COMMANDS:
-        is_json = True
-        # Check if -T is already specified
-        if "-T" not in args and "--template" not in args:
+        has_template = any(
+            arg in ("-T", "--template", "-Tjson") or arg.startswith("--template=")
+            for arg in args
+        )
+        if not has_template:
+            is_json = True
             cmd_args = args + ["-T", "json"]
         else:
             cmd_args = args
+            for idx, arg in enumerate(args):
+                if arg in ("-T", "--template") and idx + 1 < len(args):
+                    if args[idx + 1] == "json":
+                        is_json = True
+                elif arg.startswith("--template=") and arg.split("=", 1)[1] == "json":
+                    is_json = True
+                elif arg == "-Tjson":
+                    is_json = True
     else:
         cmd_args = args
 
@@ -404,14 +693,9 @@ async def run_hg_command(
             hint = _get_extension_hint(error_output, args)
             return f"Error: {error_output}{hint}"
 
-        # Minimize JSON output using Python's built-in json module
+        # Enrich with gitnode (if Git-backed) and minimize JSON output
         if is_json and output:
-            try:
-                data = json.loads(output)
-                output = json.dumps(data, separators=(",", ":"))
-            except Exception:
-                # Fallback to original output if parsing fails
-                pass
+            output = _format_json_output(output, args[0], cwd)
 
         return output
 
@@ -486,19 +770,15 @@ async def _check_git_remotes(path: Path) -> tuple[bool, list[str]]:
             for item in config_items:
                 name = item.get("name", "")
                 value = item.get("value", "")
-                is_git_remote = value.startswith("git+") or any(
-                    p in value for p in GIT_REMOTE_PATTERNS
-                )
-                if is_git_remote:
+                if isinstance(value, str) and _is_git_remote_value(value):
                     is_backed = True
                     remotes.append(f"  {name} = {value}")
         except (json.JSONDecodeError, TypeError):
             pass
 
     # Check for internal tracking files
-    if (path / ".hg" / "git-mapfile").exists() or (
-        path / ".hg" / "git-branch"
-    ).exists():
+    has_local_git, _ = _is_git_backed_repo(path)
+    if has_local_git:
         is_backed = True
 
     return is_backed, remotes
