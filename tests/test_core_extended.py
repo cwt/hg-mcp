@@ -10,6 +10,7 @@ Tests for:
 - hg_shelve and hg_unshelve (mocked)
 """
 
+import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -54,6 +55,17 @@ class TestHgCoreExtended:
         result = await hg_log(str(hg_repo_with_commits), limit=MAX_LOG_LIMIT + 1)
         text = _extract_text(result)
         assert "Error: limit exceeds maximum allowed value" in text
+
+    @pytest.mark.asyncio
+    async def test_log_with_revision_range(self, hg_repo_with_commits: Path) -> None:
+        """hg_log accepts a revset so callers can list commits since a tag."""
+        result = await hg_log(str(hg_repo_with_commits), revision="0::tip")
+        entries = json.loads(_extract_text(result))
+        assert isinstance(entries, list)
+        assert len(entries) >= 1
+
+        bad = await hg_log(str(hg_repo_with_commits), revision="0::tip; rm -rf /")
+        assert "Error: Invalid revision" in _extract_text(bad)
 
     @pytest.mark.asyncio
     async def test_diff_errors(self, hg_repo_with_commits: Path) -> None:

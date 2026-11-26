@@ -3,6 +3,8 @@
 Provides tools for working with bookmarks, topics, branches, and tags.
 """
 
+import json
+
 from mcp.types import TextContent, ToolAnnotations
 
 from hg_mcp.decorators import handle_repo_errors, json_tool
@@ -13,6 +15,38 @@ from hg_mcp.helpers import (
     validate_repo_path,
 )
 from hg_mcp.server import mcp
+
+
+def _annotate_tag_kinds(output: str) -> str:
+    """Add a `kind` field to ``hg tags -T json`` entries.
+
+    ``hg tags`` mixes real release tags with two kinds of non-release
+    entries: the built-in ``tip`` pseudo-tag (always the current head) and,
+    in hg-git repos, remote bookmarks such as ``default/main`` that carry
+    ``type: "git-remote"``. Both appear at the top of the list because they
+    sit on the head revision, which routinely misleads agents into thinking
+    the repository has no release tags.
+
+    Adding an explicit ``kind`` gives consumers a reliable way to tell them
+    apart without parsing names or depending on list order.
+    """
+    try:
+        data = json.loads(output)
+    except json.JSONDecodeError:
+        return output  # e.g. an error message from run_hg_command
+
+    if isinstance(data, list):
+        for entry in data:
+            if not isinstance(entry, dict):
+                continue
+            if entry.get("tag") == "tip":
+                entry["kind"] = "builtin"
+            elif entry.get("type") == "git-remote":
+                entry["kind"] = "git-remote"
+            else:
+                entry["kind"] = "release"
+
+    return json.dumps(data, separators=(",", ":"))
 
 
 @mcp.tool(
@@ -149,10 +183,22 @@ async def hg_tags(repo_path: str = ".") -> list[TextContent]:
     and changeset IDs (`node`). In Git-backed repos, entries also include a
     companion `gitnode` field (40-char Git commit SHA-1, or `null` if
     unexported).
+
+    Each entry has a `kind` field so non-release entries can be ignored:
+      - `release`: a real release/version tag (e.g. `v1.0.0`). Those with
+        `type: "git"` were imported from Git; `type: ""` are local tags.
+      - `builtin`: the `tip` pseudo-tag, which always points at the current
+        head. It is NOT a release and should never be used as "latest tag".
+      - `git-remote`: an hg-git remote bookmark (e.g. `default/main`). It is
+        NOT a release tag either.
+
+    To list commits since a release tag, use
+    `hg_log(revision="<tag>::tip")`, e.g. `revision="v1.0.0::tip"`.
     """
     try:
         path = validate_repo_path(repo_path)
-        return await run_hg_command(["tags"], cwd=path)  # type: ignore[return-value]
+        output = await run_hg_command(["tags"], cwd=path)
+        return _annotate_tag_kinds(output)  # type: ignore[return-value]
     except Exception as e:
         return f"Error: {e}"  # type: ignore[return-value]
 

@@ -127,21 +127,30 @@ async def hg_status(repo_path: str = ".") -> list[TextContent]:
 )
 @handle_repo_errors
 @json_tool
-async def hg_log(repo_path: str = ".", limit: int = 10) -> list[TextContent]:
+async def hg_log(
+    repo_path: str = ".",
+    limit: int = 10,
+    revision: str = "",
+) -> list[TextContent]:
     """Show commit history.
 
-    Equivalent to 'git log'. Returns a JSON array of the latest commits with
-    `rev`, `node` (40-char Mercurial changeset ID), `user`, `date`, `desc`,
-    `branch`, `bookmarks`, `tags`, `parents`, and `phase`.
+    Equivalent to 'git log'. Returns a JSON array of commits with `rev`,
+    `node` (40-char Mercurial changeset ID), `user`, `date`, `desc`, `branch`,
+    `bookmarks`, `tags`, `parents`, and `phase`.
 
     In Git-backed repos, entries automatically include a companion `gitnode`
     field (40-char Git commit SHA-1, or `null` if not exported to Git yet)
-    without needing any template or revset arguments. Truncate `node` /
-    `gitnode` to 12 characters if short hashes are needed.
+    without needing any template arguments. Truncate `node` / `gitnode` to 12
+    characters if short hashes are needed.
 
     Args:
         repo_path: The repository path (default: ".")
         limit: Maximum number of commits to return (default: 10, max: 1000)
+        revision: Optional Mercurial revision spec / revset. Use this to list
+            commits in a range, e.g. "v1.0.0::tip" for all commits since the
+            v1.0.0 release tag, or "branch(stable)" for a branch. When
+            omitted, the latest `limit` commits of the current branch are
+            returned.
     """
     from mcp.types import Annotations as AnnotationsType
 
@@ -167,7 +176,20 @@ async def hg_log(repo_path: str = ".", limit: int = 10) -> list[TextContent]:
             ]
 
         path = validate_repo_path(repo_path)
-        return await run_hg_command(["log", "--limit", str(limit)], cwd=path)  # type: ignore[return-value]
+        args = ["log", "--limit", str(limit)]
+        if revision:
+            try:
+                safe_revision = sanitize_input(revision, max_length=500)
+            except ValueError as e:
+                return [
+                    TextContent(
+                        type="text",
+                        text=f"Error: Invalid revision - {e}",
+                        annotations=AnnotationsType(audience=["user"], priority=1.0),
+                    )
+                ]
+            args.extend(["-r", safe_revision])
+        return await run_hg_command(args, cwd=path)  # type: ignore[return-value]
     except Exception as e:
         return [
             TextContent(

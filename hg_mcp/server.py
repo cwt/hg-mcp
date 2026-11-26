@@ -77,11 +77,11 @@ mcp: HG_MCP = HG_MCP(
   (`hg_log`, `hg_identify`, `hg_heads`, `hg_bookmarks`, `hg_tags`,
   `hg_incoming`, `hg_outgoing`, `hg_stack`). Plain Mercurial repos omit
   `gitnode`.
-- **No templates or revsets are needed to read `gitnode`:** `hg_log` only
-  accepts `repo_path` and `limit` (default `10`), and already includes full
-  40-char `node` and `gitnode` in its JSON array output (truncate to 12 chars
-  when displaying short hashes). Do not pass `template`, `fields`, or
-  `revision` to `hg_log`.
+- **No templates or fields arguments are needed to read `gitnode`:** `hg_log`
+  accepts `repo_path`, `limit` (default `10`) and an optional `revision`
+  revset, and already includes full 40-char `node` and `gitnode` in its JSON
+  array output (truncate to 12 chars when displaying short hashes). Do not
+  pass `template` or `fields`; those parameters are not supported.
 - `gitnode` is the 40-char Git commit SHA-1 when mapped in `.hg/git-mapfile`,
   or `null` if the changeset has not been exported/mapped to Git yet (e.g.,
   before `hg gexport`), in an empty repo, or during an uncommitted merge.
@@ -177,8 +177,21 @@ mcp: HG_MCP = HG_MCP(
 - `hg_import`: Import patch files
 
 **Tags**
-- `hg_tags`: List all tags (JSON)
+- `hg_tags`: List all tags (JSON, each entry annotated with `kind`)
 - `hg_tag`: Create/remove tags (auto-commits)
+
+**Tag interpretation (avoid common confusion)**
+- `hg_tags` returns a flat JSON array whose first entries are usually the
+  built-in `tip` pseudo-tag and (in hg-git repos) the remote bookmark
+  `default/main` with `type: "git-remote"`. Neither is a release tag; they
+  appear first simply because they sit on the head revision.
+- Each entry has a `kind` field: `release` = real version tag (use these),
+  `builtin` = `tip` (ignore), `git-remote` = hg-git remote bookmark (ignore).
+  Tags with `type: "git"` are still genuine release tags imported from Git.
+- For "latest tag" or "commits since the latest tag", ignore `builtin` and
+  `git-remote` entries and pick the highest-`rev` `release` entry. Then call
+  `hg_log(revision="<tag>::tip")`, e.g. `revision="v1.0.0::tip"`, to list
+  those commits. Use `hg_diff(revisions="<tag>..tip")` for the patch.
 
 **Large Files & Git**
 - `hg_largefiles`: List large files with sizes (requires 'largefiles')

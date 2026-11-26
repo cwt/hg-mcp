@@ -343,6 +343,21 @@ class TestHgTagsJson:
         text = _extract_text(result)
         assert "v1.0.0" in text or "v2.0.0" in text
 
+    @pytest.mark.asyncio
+    async def test_tags_annotate_kinds(self, hg_repo_with_tags: Path) -> None:
+        """Real tags, built-in tip and git-remote entries are distinguished."""
+        result = await hg_tags(str(hg_repo_with_tags))
+        entries = _extract_json(result)
+        assert isinstance(entries, list)
+
+        kinds = {
+            entry["tag"]: entry["kind"]
+            for entry in entries
+            if isinstance(entry, dict) and "tag" in entry
+        }
+        assert kinds.get("tip") == "builtin"
+        assert any(kind == "release" for kind in kinds.values())
+
 
 class TestHgConfigJson:
     """Tests for hg_config JSON output."""
